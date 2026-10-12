@@ -11,7 +11,9 @@ import {
   CheckCircle2, 
   ShieldAlert,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Upload,
+  Camera
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep } from '../services/audio';
@@ -80,6 +82,58 @@ export default function Readers() {
     setFormExpiry(r.expiry_date || '');
     setFormError('');
     setIsModalOpen(true);
+  };
+
+  // Xử lý upload ảnh trực tiếp từ máy tính (nén tối ưu hóa client-side)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Vui lòng chọn tệp hình ảnh (PNG, JPG, WEBP)!', 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Dung lượng ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn!', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Nén và điều chỉnh kích thước ảnh phù hợp cho avatar (tối đa 300x300)
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+          setFormAvatar(compressedBase64);
+          showToast('Đã tải ảnh lên thành công!', 'success');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -433,15 +487,73 @@ export default function Readers() {
                 </div>
               </div>
 
+              {/* Khối Tải Lên Ảnh Đại Diện */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Ảnh đại diện (URL)</label>
-                <input
-                  type="text"
-                  value={formAvatar}
-                  onChange={(e) => setFormAvatar(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:bg-white focus:border-indigo-600 font-mono text-[11px]"
-                />
+                <label className="block font-semibold text-slate-700 mb-1.5">
+                  Ảnh đại diện bạn đọc
+                </label>
+
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  {/* Khung xem trước ảnh */}
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-slate-200 border-2 border-indigo-200 shadow-xs shrink-0 flex items-center justify-center">
+                    {formAvatar ? (
+                      <img
+                        src={formAvatar}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-slate-400 flex flex-col items-center">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nút bấm chọn ảnh từ máy tính */}
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer transition-colors shadow-2xs">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Tải ảnh từ máy tính</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {formAvatar && (
+                        <button
+                          type="button"
+                          onClick={() => setFormAvatar('')}
+                          className="px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold text-xs border border-rose-200 transition-colors"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Hỗ trợ PNG, JPG, WEBP. Ảnh tự động tối ưu hóa và lưu an toàn.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tùy chọn mở rộng: nhập URL ảnh nếu muốn */}
+                <details className="mt-2 text-[11px] text-slate-500">
+                  <summary className="cursor-pointer hover:text-indigo-600 font-medium select-none">
+                    Hoặc nhập URL ảnh trực tuyến...
+                  </summary>
+                  <div className="mt-1.5">
+                    <input
+                      type="text"
+                      value={formAvatar.startsWith('data:') ? '' : formAvatar}
+                      onChange={(e) => setFormAvatar(e.target.value)}
+                      placeholder="https://example.com/avatar.jpg"
+                      className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 outline-none focus:border-indigo-600 font-mono text-[11px]"
+                    />
+                  </div>
+                </details>
               </div>
 
               <div>
