@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 110" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Background Squircle Gradient -->
+    <linearGradient id="bgGradFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312E81" />
+      <stop offset="50%" stop-color="#1E1B4B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <!-- Main Book "N" Primary Gradient -->
+    <linearGradient id="primaryNFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#4338CA" />
+    </linearGradient>
+
+    <!-- Wing Right / Accent Gradient -->
+    <linearGradient id="accentCyanFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="50%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+
+    <!-- Diagonal Bridge "N" Gradient -->
+    <linearGradient id="bridgeGradFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="60%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+
+    <!-- Gold Bookmark Ribbon Gradient -->
+    <linearGradient id="goldRibbonFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#E0E7FF" />
+    </linearGradient>
+
+    <linearGradient id="tagGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+
+    <filter id="shadowFull" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#4F46E5" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Left Logo Icon Squircle Container -->
+  <g transform="translate(6, 6)" filter="url(#shadowFull)">
+    <rect x="0" y="0" width="98" height="98" rx="24" fill="url(#bgGradFull)" stroke="#4338CA" stroke-width="1.5" stroke-opacity="0.5" />
+
+    <!-- Icon Graphic inside squircle -->
+    <g transform="translate(-5, -5) scale(0.85)">
+      <!-- Left Pillar -->
+      <path d="M 28 34 C 28 31.8 29.8 30 32 30 L 44 30 C 46.2 30 48 31.8 48 34 L 48 94 C 48 96.2 46.2 98 44 98 L 32 98 C 29.8 98 28 96.2 28 94 Z" fill="url(#primaryNFull)" />
+      <!-- Right Pillar -->
+      <path d="M 80 34 C 80 31.8 81.8 30 84 30 L 96 30 C 98.2 30 100 31.8 100 34 L 100 94 C 100 96.2 98.2 98 96 98 L 84 98 C 81.8 98 80 96.2 80 94 Z" fill="url(#accentCyanFull)" />
+      <!-- Diagonal Bridge -->
+      <path d="M 44 30 L 52 30 C 54.5 30 56.5 31.2 57.8 33.2 L 84 76 L 84 96 C 84 97.5 82.5 98.2 81 97.5 L 44 38 Z" fill="url(#bridgeGradFull)" />
+      <!-- Golden Ribbon -->
+      <path d="M 60 26 L 68 26 L 68 54 L 64 50 L 60 54 Z" fill="url(#goldRibbonFull)" />
+      <!-- Sparkle -->
+      <path d="M 102 24 L 103.5 28.5 L 108 30 L 103.5 31.5 L 102 36 L 100.5 31.5 L 96 30 L 100.5 28.5 Z" fill="#FBBF24" />
+    </g>
+  </g>
+
+  <!-- Brand Typography -->
+  <g transform="translate(122, 20)">
+    <!-- Brand Title: Nam Library -->
+    <text x="0" y="42" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif" font-size="38" font-weight="800" fill="url(#textGrad)" letter-spacing="-0.03em">
+      Nam <tspan fill="#818CF8">Library</tspan>
+    </text>
+
+    <!-- Tagline / Subtitle -->
+    <text x="2" y="66" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif" font-size="13" font-weight="600" fill="url(#tagGrad)" letter-spacing="0.12em">
+      HỆ THỐNG THƯ VIỆN THÔNG MINH
+    </text>
+
+    <!-- Version / Windows pill badge -->
+    <g transform="translate(255, 14)">
+      <rect x="0" y="0" width="72" height="22" rx="11" fill="#1E293B" stroke="#4F46E5" stroke-width="1" />
+      <text x="36" y="15" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#A5B4FC" text-anchor="middle">v1.0.0 Win</text>
+    </g>
+  </g>
+</svg>

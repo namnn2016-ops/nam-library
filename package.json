@@ -1,0 +1,58 @@
+{
+  "name": "nam-libary",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "build": "vite build && electron-builder",
+    "build:web": "vite build",
+    "build:electron": "electron-builder",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron ."
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "autoprefixer": "^10.6.1",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.54.0",
+    "postcss": "^8.5.29",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-hook-form": "^7.89.0",
+    "react-router-dom": "^7.18.4",
+    "recharts": "^3.10.1",
+    "resend": "^6.32.1",
+    "sqlite3": "^6.0.1",
+    "tailwindcss": "^4.3.3",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "wait-on": "^9.5.1"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.namnn.libary",
+    "productName": "nam-libary",
+    "win": {
+      "target": "nsis"
+    },
+    "directories": {
+      "buildResources": "public"
+    }
+  }
+}

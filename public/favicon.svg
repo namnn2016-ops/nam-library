@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="bgGradFav" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312E81" />
+      <stop offset="50%" stop-color="#1E1B4B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="primaryNFav" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#4338CA" />
+    </linearGradient>
+    <linearGradient id="accentCyanFav" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="50%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <linearGradient id="bridgeGradFav" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="60%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+    <linearGradient id="goldRibbonFav" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#bgGradFav)" stroke="#4338CA" stroke-width="1.5" stroke-opacity="0.6" />
+  
+  <!-- Left Pillar -->
+  <path d="M 28 34 C 28 31.8 29.8 30 32 30 L 44 30 C 46.2 30 48 31.8 48 34 L 48 94 C 48 96.2 46.2 98 44 98 L 32 98 C 29.8 98 28 96.2 28 94 Z" fill="url(#primaryNFav)" />
+  <!-- Right Pillar -->
+  <path d="M 80 34 C 80 31.8 81.8 30 84 30 L 96 30 C 98.2 30 100 31.8 100 34 L 100 94 C 100 96.2 98.2 98 96 98 L 84 98 C 81.8 98 80 96.2 80 94 Z" fill="url(#accentCyanFav)" />
+  <!-- Diagonal Bridge -->
+  <path d="M 44 30 L 52 30 C 54.5 30 56.5 31.2 57.8 33.2 L 84 76 L 84 96 C 84 97.5 82.5 98.2 81 97.5 L 44 38 Z" fill="url(#bridgeGradFav)" />
+  <!-- Golden Ribbon -->
+  <path d="M 60 26 L 68 26 L 68 54 L 64 50 L 60 54 Z" fill="url(#goldRibbonFav)" />
+  <!-- Sparkle -->
+  <path d="M 102 24 L 103.5 28.5 L 108 30 L 103.5 31.5 L 102 36 L 100.5 31.5 L 96 30 L 100.5 28.5 Z" fill="#FBBF24" />
+</svg>
