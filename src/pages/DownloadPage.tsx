@@ -20,19 +20,37 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+// =========================================================================
+// CẤU HÌNH CÁC ĐƯỜNG DẪN TẢI XUỐNG VÀ DỰ PHÒNG CHO NAM LIBRARY
+// Bạn có thể chỉnh sửa link trực tiếp ở đây hoặc cấu hình qua biến môi trường (.env / Vercel):
+// =========================================================================
+export const DOWNLOAD_CONFIG = {
+  // 1. Link tải file Setup .exe (hoặc link CDN tải trực tiếp)
+  exeUrl: import.meta.env.VITE_DOWNLOAD_EXE_URL || '/downloads/nam-libary-Setup-1.0.0.exe',
+
+  // 2. Link GitHub Releases chính thức
+  githubReleasesUrl: import.meta.env.VITE_DOWNLOAD_GITHUB_URL || 'https://github.com/namnn2016-ops/nam-library/releases',
+
+  // 3. Link Google Drive dự phòng
+  googleDriveUrl: import.meta.env.VITE_DOWNLOAD_GDRIVE_URL || 'https://drive.google.com',
+
+  // 4. Link bản nén Portable (.zip) không cần cài đặt
+  portableUrl: import.meta.env.VITE_DOWNLOAD_PORTABLE_URL || '/downloads/nam-libary-portable-1.0.0.zip',
+};
+
 export default function DownloadPage() {
   const [activeTab, setActiveTab] = useState<'scanner' | 'email' | 'analytics' | 'readers'>('scanner');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [downloadStarted, setDownloadStarted] = useState(false);
 
-  // Đường dẫn tải trực tiếp EXE
-  const exeDownloadUrl = '/downloads/nam-libary-Setup-1.0.0.exe';
-  const portableDownloadUrl = '/downloads/nam-libary-portable-1.0.0.zip';
-
   const handleDownloadClick = () => {
     setDownloadStarted(true);
+    if (DOWNLOAD_CONFIG.exeUrl.startsWith('http')) {
+      window.open(DOWNLOAD_CONFIG.exeUrl, '_blank');
+      return;
+    }
     const link = document.createElement('a');
-    link.href = exeDownloadUrl;
+    link.href = DOWNLOAD_CONFIG.exeUrl;
     link.setAttribute('download', 'nam-libary-Setup-1.0.0.exe');
     document.body.appendChild(link);
     link.click();
@@ -193,7 +211,7 @@ export default function DownloadPage() {
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs text-slate-400">
               <span className="font-semibold text-slate-400">Các đường dẫn dự phòng:</span>
               <a
-                href="https://github.com"
+                href={DOWNLOAD_CONFIG.githubReleasesUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="hover:text-indigo-400 underline underline-offset-4 flex items-center gap-1"
@@ -202,20 +220,20 @@ export default function DownloadPage() {
               </a>
               <span>•</span>
               <a
-                href={portableDownloadUrl}
-                download
-                className="hover:text-cyan-400 underline underline-offset-4 flex items-center gap-1"
-              >
-                Bản nén Portable (.zip)
-              </a>
-              <span>•</span>
-              <a
-                href="https://drive.google.com"
+                href={DOWNLOAD_CONFIG.googleDriveUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="hover:text-emerald-400 underline underline-offset-4 flex items-center gap-1"
               >
                 Google Drive Mirror
+              </a>
+              <span>•</span>
+              <a
+                href={DOWNLOAD_CONFIG.portableUrl}
+                download
+                className="hover:text-cyan-400 underline underline-offset-4 flex items-center gap-1"
+              >
+                Bản nén Portable (.zip)
               </a>
             </div>
           </div>
