@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { 
-  Download, 
-  Sparkles, 
-  ShieldCheck, 
-  Zap, 
-  BarChart3, 
-  ExternalLink, 
-  CheckCircle2, 
-  Cpu, 
-  HardDrive, 
-  Monitor, 
-  Barcode, 
-  Volume2, 
-  Mail, 
+import {
+  Download,
+  Sparkles,
+  ShieldCheck,
+  Zap,
+  BarChart3,
+  ExternalLink,
+  CheckCircle2,
+  Cpu,
+  HardDrive,
+  Monitor,
+  Barcode,
+  Volume2,
+  Mail,
   ArrowRight,
   HelpCircle,
   Check,
@@ -32,7 +32,7 @@ export const DOWNLOAD_CONFIG = {
   githubReleasesUrl: import.meta.env.VITE_DOWNLOAD_GITHUB_URL || 'https://github.com/namnn2016-ops/nam-library/releases',
 
   // 3. Link Google Drive dự phòng
-  googleDriveUrl: import.meta.env.VITE_DOWNLOAD_GDRIVE_URL || 'https://drive.google.com',
+  googleDriveUrl: import.meta.env.VITE_DOWNLOAD_GDRIVE_URL || 'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing',
 
   // 4. Link bản nén Portable (.zip) không cần cài đặt
   portableUrl: import.meta.env.VITE_DOWNLOAD_PORTABLE_URL || '/downloads/nam-libary-portable-1.0.0.zip',
@@ -322,11 +322,10 @@ export default function DownloadPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`flex items-center gap-2.5 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/30'
-                      : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-                  }`}
+                  className={`flex items-center gap-2.5 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all ${isActive
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/30'
+                    : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
