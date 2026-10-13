@@ -161,7 +161,7 @@ function App() {
           <ClerkProvider
             publishableKey={
               getClerkPublishableKey() ||
-              'pk_test_bmFtLWxpYnJhcnkuY2xlcmsuYWNjb3VudHMuZGV2JA'
+              'pk_live_Y2xlcmsubmFtLWxpYnJhcnkudmVyY2VsLmFwcCQ'
             }
           >
             <Routes>

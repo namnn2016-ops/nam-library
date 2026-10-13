@@ -25,12 +25,6 @@ import {
   useClerk
 } from '@clerk/clerk-react';
 import { generateDesktopAuthToken } from '../services/auth';
-import {
-  getClerkPublishableKey,
-  setClerkPublishableKey,
-  getClerkSecretKey,
-  setClerkSecretKey
-} from '../services/clerkConfig';
 
 // Component tạo và hiển thị chuỗi ký tự xác thực khi người dùng đã đăng nhập Clerk thành công
 function DesktopTokenGenerator({
@@ -250,24 +244,7 @@ function ClerkFallbackSection({
   reason?: string;
   onRetry?: () => void;
 }) {
-  const [pubKeyInput, setPubKeyInput] = useState(getClerkPublishableKey());
-  const [secretKeyInput, setSecretKeyInput] = useState(getClerkSecretKey());
-  const [savedSuccess, setSavedSuccess] = useState(false);
   const [quickUser, setQuickUser] = useState<{ id: string; name: string; email: string } | null>(null);
-
-  const handleSaveKeys = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pubKeyInput.trim()) {
-      setClerkPublishableKey(pubKeyInput.trim());
-    }
-    if (secretKeyInput.trim()) {
-      setClerkSecretKey(secretKeyInput.trim());
-    }
-    setSavedSuccess(true);
-    setTimeout(() => {
-      window.location.reload();
-    }, 800);
-  };
 
   const handleQuickDemo = (name: string, id: string, email: string) => {
     setQuickUser({ id, name, email });
@@ -296,72 +273,19 @@ function ClerkFallbackSection({
         </div>
       </div>
 
-      {/* Form cấu hình Clerk Key nhanh */}
-      <form onSubmit={handleSaveKeys} className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">
-            <Lock className="w-3.5 h-3.5 text-indigo-400" />
-            Cấu Hình Clerk API Keys (Lấy từ Dashboard Clerk):
-          </span>
-          <a
-            href="https://dashboard.clerk.com"
-            target="_blank"
-            rel="noreferrer"
-            className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold"
+      {/* Nút thao tác thử lại */}
+      <div className="flex items-center gap-3">
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
           >
-            <span>Mở dashboard.clerk.com</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-
-        <div className="space-y-3 text-xs">
-          <div>
-            <label className="block text-slate-400 font-semibold mb-1">
-              Clerk Publishable Key (Bắt đầu bằng <code>pk_test_...</code> hoặc <code>pk_live_...</code>):
-            </label>
-            <input
-              type="text"
-              value={pubKeyInput}
-              onChange={(e) => setPubKeyInput(e.target.value)}
-              placeholder="pk_test_xxxxxxxxxxxxxxxxxxxxxxxx"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 font-mono text-white placeholder-slate-500 outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-400 font-semibold mb-1">
-              Clerk Secret Key (Bắt đầu bằng <code>sk_test_...</code> hoặc <code>sk_live_...</code>):
-            </label>
-            <input
-              type="password"
-              value={secretKeyInput}
-              onChange={(e) => setSecretKeyInput(e.target.value)}
-              placeholder="Điền mã Clerk Secret Key (sk_test_...)"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 font-mono text-white placeholder-slate-500 outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
-            >
-              {savedSuccess ? 'Đã lưu! Đang tải lại...' : 'Lưu & Kết Nối Clerk'}
-            </button>
-
-            {onRetry && (
-              <button
-                type="button"
-                onClick={onRetry}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-xs border border-slate-700 transition-colors cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Thử lại kết nối</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </form>
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Thử lại kết nối Clerk</span>
+          </button>
+        )}
+      </div>
 
       {/* Tạo chuỗi xác thực nhanh (Dự phòng khẩn cấp) */}
       <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800 space-y-3 text-xs">

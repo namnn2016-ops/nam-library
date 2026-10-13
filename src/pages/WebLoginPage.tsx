@@ -26,12 +26,6 @@ import {
   useClerk
 } from '@clerk/clerk-react';
 import { generateDesktopAuthToken } from '../services/auth';
-import {
-  getClerkPublishableKey,
-  setClerkPublishableKey,
-  getClerkSecretKey,
-  setClerkSecretKey
-} from '../services/clerkConfig';
 
 function WebLoginLoadedContent() {
   const { user } = useUser();
@@ -239,18 +233,7 @@ function WebLoginLoadedContent() {
 
 // Fallback UI khi Clerk tải chậm hoặc lỗi key
 function WebLoginFallbackContent({ onRetry }: { onRetry: () => void }) {
-  const [pubKey, setPubKey] = useState(getClerkPublishableKey());
-  const [secretKey, setSecretKey] = useState(getClerkSecretKey());
-  const [saved, setSaved] = useState(false);
   const [demoCode, setDemoCode] = useState<string | null>(null);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pubKey.trim()) setClerkPublishableKey(pubKey.trim());
-    if (secretKey.trim()) setClerkSecretKey(secretKey.trim());
-    setSaved(true);
-    setTimeout(() => window.location.reload(), 800);
-  };
 
   const handleQuickDemo = (name: string, id: string, email: string) => {
     const code = generateDesktopAuthToken({ id, name, email });
@@ -269,62 +252,16 @@ function WebLoginFallbackContent({ onRetry }: { onRetry: () => void }) {
         </div>
       </div>
 
-      {/* Form cấu hình key */}
-      <form onSubmit={handleSave} className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3.5 text-xs">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span className="font-bold text-white flex items-center gap-1.5">
-            <Lock className="w-3.5 h-3.5 text-indigo-400" />
-            Nhập Khóa Clerk Từ Dashboard:
-          </span>
-          <a
-            href="https://dashboard.clerk.com"
-            target="_blank"
-            rel="noreferrer"
-            className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-          >
-            <span>Clerk Dashboard</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-
-        <div>
-          <label className="block text-slate-400 font-semibold mb-1">Publishable Key (pk_test_...):</label>
-          <input
-            type="text"
-            value={pubKey}
-            onChange={(e) => setPubKey(e.target.value)}
-            placeholder="pk_test_xxxxxxxxxxxxxxxxxxxxxxxx"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-slate-400 font-semibold mb-1">Secret Key (sk_test_...):</label>
-          <input
-            type="password"
-            value={secretKey}
-            onChange={(e) => setSecretKey(e.target.value)}
-            placeholder="Điền mã Clerk Secret Key (sk_test_...)"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 pt-1">
-          <button
-            type="submit"
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-md"
-          >
-            {saved ? 'Đã lưu! Đang tải lại...' : 'Lưu & Kết Nối'}
-          </button>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 cursor-pointer"
-          >
-            Thử lại
-          </button>
-        </div>
-      </form>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-md flex items-center gap-2"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Thử lại kết nối Clerk</span>
+        </button>
+      </div>
 
       {/* Đăng nhập nhanh */}
       <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800 space-y-3 text-xs">

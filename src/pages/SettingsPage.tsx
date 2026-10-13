@@ -16,8 +16,6 @@ import {
   Download,
   Upload,
   ShieldCheck,
-  Eye,
-  EyeOff,
   Lock,
   CheckCircle2,
   XCircle,
@@ -29,11 +27,8 @@ import { useToast } from '../context/ToastContext';
 import {
   getStoredDesktopUser,
   logoutDesktopUser,
-  getStoredClerkSecretKey,
-  setStoredClerkSecretKey,
   testClerkSecretKey
 } from '../services/auth';
-import { getClerkPublishableKey, setClerkPublishableKey } from '../services/clerkConfig';
 import type { AppSettings, AuthUser } from '../types';
 import type { StorageConfig } from '../types/electron';
 
@@ -51,19 +46,15 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const envApiKey = import.meta.env.VITE_RESEND_API_KEY || '';
   const envFromEmail = import.meta.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+  const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
-  // State quản lý Clerk Keys
-  const [clerkPubInput, setClerkPubInput] = useState<string>('');
-  const [clerkSecret, setClerkSecret] = useState<string>('');
-  const [showSecret, setShowSecret] = useState(false);
+  // Trạng thái kiểm tra Clerk API
   const [testingSecret, setTestingSecret] = useState(false);
   const [secretTestResult, setSecretTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     const user = getStoredDesktopUser();
     setCurrentUser(user);
-    setClerkPubInput(getClerkPublishableKey());
-    setClerkSecret(getStoredClerkSecretKey());
 
     const fetchConfig = async () => {
       try {
@@ -81,28 +72,11 @@ export default function SettingsPage() {
     fetchConfig();
   }, []);
 
-  const handleSaveClerkPubKey = () => {
-    setClerkPublishableKey(clerkPubInput);
-    playSuccessBeep();
-    showToast('Đã lưu Clerk Publishable Key thành công!', 'success');
-  };
-
-  const handleSaveClerkSecret = () => {
-    setStoredClerkSecretKey(clerkSecret);
-    playSuccessBeep();
-    showToast('Đã lưu Clerk Secret Key thành công!', 'success');
-  };
-
   const handleTestClerkSecret = async () => {
-    if (!clerkSecret.trim()) {
-      playErrorBeep();
-      showToast('Vui lòng nhập Clerk Secret Key (sk_test_...) để kiểm tra!', 'error');
-      return;
-    }
     setTestingSecret(true);
     setSecretTestResult(null);
     try {
-      const res = await testClerkSecretKey(clerkSecret);
+      const res = await testClerkSecretKey();
       setSecretTestResult(res);
       if (res.success) {
         playSuccessBeep();
@@ -624,79 +598,42 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-4 text-xs">
-            {/* Publishable Key Input */}
+            {/* Thông tin cấu hình từ .env */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <span className="font-semibold text-slate-800 flex items-center gap-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-700 flex items-center gap-2">
                   <Key className="w-4 h-4 text-slate-400" />
-                  Clerk Publishable Key (pk_test_... hoặc pk_live_...):
+                  Trạng thái Clerk Publishable Key (.env):
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>Đã nạp từ .env</span>
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 text-slate-600">
+                <span>Publishable Key đang sử dụng:</span>
+                <span className="font-mono text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                  {clerkPublishableKey ? `${clerkPublishableKey.substring(0, 18)}...` : 'Chưa cấu hình'}
+                </span>
+              </div>
+            </div>
+
+            {/* Trạng thái Secret Key & Nút kiểm tra kết nối */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-indigo-500" />
+                  Trạng thái Clerk Secret Key (Chỉ 1 khóa duy nhất trên Server):
                 </span>
                 <button
                   type="button"
-                  onClick={handleSaveClerkPubKey}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors cursor-pointer self-start sm:self-auto"
+                  onClick={handleTestClerkSecret}
+                  disabled={testingSecret}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Lưu Publishable Key
-                </button>
-              </div>
-
-              <input
-                type="text"
-                value={clerkPubInput}
-                onChange={(e) => setClerkPubInput(e.target.value)}
-                placeholder="Điền mã pk_test_... lấy từ Clerk Dashboard > API Keys"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-mono font-semibold outline-none focus:border-indigo-600"
-              />
-
-              <p className="text-[11px] text-slate-500">
-                Khóa công khai dùng để hiển thị hộp thoại đăng nhập chính thức của Clerk trên trình duyệt.
-              </p>
-            </div>
-
-            {/* Secret Key Input & Tester */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <label className="font-semibold text-slate-800 flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-indigo-500" />
-                  Mã Bí Mật Clerk Secret Key (sk_test_... hoặc sk_live_...):
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveClerkSecret}
-                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Lưu Secret Key
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTestClerkSecret}
-                    disabled={testingSecret}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${testingSecret ? 'animate-spin' : ''}`} />
-                    <span>{testingSecret ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative">
-                <input
-                  type={showSecret ? 'text' : 'password'}
-                  value={clerkSecret}
-                  onChange={(e) => {
-                    setClerkSecret(e.target.value);
-                    setSecretTestResult(null);
-                  }}
-                  placeholder="Điền mã sk_test_... lấy từ Clerk Dashboard > API Keys"
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-white border border-slate-200 text-xs font-mono font-semibold outline-none focus:border-indigo-600"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSecret(!showSecret)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingSecret ? 'animate-spin' : ''}`} />
+                  <span>{testingSecret ? 'Đang kiểm tra...' : 'Kiểm tra kết nối Clerk API'}</span>
                 </button>
               </div>
 
@@ -718,7 +655,7 @@ export default function SettingsPage() {
               )}
 
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                💡 <strong>Clerk Secret Key</strong> được dùng để gọi Backend API (<code>https://api.clerk.com/v1/...</code>), xác thực người dùng trên serverless function (<code>/api/clerk-auth</code> và <code>/api/verify-token</code>) và ký chống giả mạo mã xác thực Desktop. Bạn có thể lấy mã này từ Clerk Dashboard mục <strong>API Keys</strong>.
+                💡 Khóa bí mật <strong>CLERK_SECRET_KEY</strong> được lưu bảo mật trong file <code>.env</code> của máy chủ để giao tiếp an toàn với Clerk Backend API và ký mã xác thực Desktop. Không cần nhập thủ công trên giao diện.
               </p>
             </div>
           </div>

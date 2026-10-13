@@ -16,10 +16,7 @@ export default async function handler(req, res) {
   }
 
   // Lấy khóa bí mật CLERK_SECRET_KEY từ Environment Variables
-  const secretKey =
-    process.env.CLERK_SECRET_KEY ||
-    process.env.VITE_CLERK_SECRET_KEY ||
-    '';
+  const secretKey = process.env.CLERK_SECRET_KEY || '';
 
   try {
     let bodyData = {};

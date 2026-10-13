@@ -34,7 +34,6 @@ export default async function handler(req, res) {
   const secretKey =
     clientSecret ||
     process.env.CLERK_SECRET_KEY ||
-    process.env.VITE_CLERK_SECRET_KEY ||
     '';
 
   if (!secretKey) {

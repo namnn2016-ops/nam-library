@@ -1,35 +1,6 @@
 import type { AuthUser, DesktopAuthPayload } from '../types';
 
 const STORAGE_KEY_AUTH = 'nam_library_desktop_user';
-const STORAGE_KEY_CLERK_SECRET = 'nam_library_clerk_secret';
-
-/**
- * Lấy Clerk Secret Key được lưu trong localStorage hoặc từ file .env
- */
-export function getStoredClerkSecretKey(): string {
-  try {
-    const local = localStorage.getItem(STORAGE_KEY_CLERK_SECRET);
-    if (local && local.trim()) return local.trim();
-  } catch {
-    // fallback
-  }
-  return import.meta.env.VITE_CLERK_SECRET_KEY || '';
-}
-
-/**
- * Lưu Clerk Secret Key vào localStorage
- */
-export function setStoredClerkSecretKey(secret: string): void {
-  try {
-    if (!secret || !secret.trim()) {
-      localStorage.removeItem(STORAGE_KEY_CLERK_SECRET);
-    } else {
-      localStorage.setItem(STORAGE_KEY_CLERK_SECRET, secret.trim());
-    }
-  } catch (err) {
-    console.error('Lỗi lưu Clerk Secret Key:', err);
-  }
-}
 
 /**
  * Sinh chuỗi ngẫu nhiên (nonce)
@@ -47,7 +18,7 @@ function randomString(length = 12): string {
  * Tính toán chữ ký xác thực (Signature) bằng thuật toán băm với Secret Key
  */
 function computeSignature(payloadBase64: string, secretKey?: string): string {
-  const secret = (secretKey || getStoredClerkSecretKey() || 'nam_library_default_secret').trim();
+  const secret = (secretKey || 'nam_library_clerk_secret').trim();
   let h1 = 0xdeadbeef;
   let h2 = 0x41c64e6d;
   const combined = secret + ':' + payloadBase64;
@@ -158,19 +129,11 @@ export async function testClerkSecretKey(secretKeyInput?: string): Promise<{
   success: boolean;
   message: string;
 }> {
-  const secret = (secretKeyInput || getStoredClerkSecretKey()).trim();
-  if (!secret) {
-    return {
-      success: false,
-      message: 'Chưa cấu hình hoặc nhập CLERK_SECRET_KEY (dạng sk_test_... hoặc sk_live_...).',
-    };
-  }
-
   try {
     const res = await fetch('/api/clerk-auth?action=status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientSecret: secret }),
+      body: JSON.stringify(secretKeyInput ? { clientSecret: secretKeyInput } : {}),
     });
 
     if (res.ok) {
