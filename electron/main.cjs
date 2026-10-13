@@ -123,14 +123,25 @@ function isCloudSyncPath(dataDir) {
 function getAvailableDrives() {
   const drives = [];
   const letters = ['C', 'D', 'E', 'F', 'G', 'H', 'Z'];
+  const userProfile = process.env.USERPROFILE || '';
+
   for (const letter of letters) {
     const rootPath = `${letter}:\\`;
     try {
       if (fs.existsSync(rootPath)) {
+        // Với ổ C:, dùng C:\Users\<Username>\NamLibraryData để tránh bị Windows từ chối quyền Administrator
+        const targetPath =
+          letter === 'C' && userProfile
+            ? path.join(userProfile, 'NamLibraryData')
+            : path.join(`${letter}:\\`, 'NamLibraryData');
+
         drives.push({
           letter: `${letter}:`,
-          path: path.join(`${letter}:\\`, 'NamLibraryData'),
-          label: `Ổ đĩa ${letter}: (${letter}:\\NamLibraryData)`,
+          path: targetPath,
+          label:
+            letter === 'C'
+              ? `Ổ đĩa C: (${targetPath})`
+              : `Ổ đĩa ${letter}: (${targetPath})`,
           isCloud: false,
         });
       }
@@ -287,6 +298,8 @@ function createWindow() {
     height: 840,
     minWidth: 1024,
     minHeight: 700,
+    backgroundColor: '#020617', // Giữ nền tối màu, tránh tình trạng màn hình chớp trắng
+    show: false, // Ẩn đến khi sẵn sàng hiển thị để tránh màn hình trắng
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -295,11 +308,29 @@ function createWindow() {
     icon: path.join(__dirname, '../public/logo-icon.svg'),
   });
 
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  // Cho phép người dùng bấm F12 để mở DevTools kiểm tra lỗi nếu cần
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' && input.type === 'keyDown') {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+
+  const indexPath = path.join(__dirname, '../dist/index.html');
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(indexPath).catch((err) => {
+      console.error('[Electron] Lỗi nạp tệp giao diện:', indexPath, err);
+      // Nếu loadFile lỗi, thử fallback mở DevTools để hiển thị lỗi
+      mainWindow.show();
+      mainWindow.webContents.openDevTools();
+    });
   }
 
   // Remove menu for cleaner modern desktop look
@@ -307,8 +338,13 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  const config = getStorageConfig();
-  await switchUserDb(config.currentUserId || 'default_user');
+  try {
+    const config = getStorageConfig();
+    await switchUserDb(config.currentUserId || 'default_user');
+  } catch (err) {
+    console.error('[Electron] Khởi tạo CSDL ban đầu thất bại:', err);
+  }
+
   createWindow();
 
   app.on('activate', () => {

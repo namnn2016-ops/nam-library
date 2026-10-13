@@ -94,16 +94,20 @@ function App() {
 
   // Khởi tạo CSDL SQLite riêng cho user khi mở ứng dụng Desktop
   useEffect(() => {
-    if (isElectron && desktopUser && window.electronAPI) {
-      window.electronAPI.initUserDb(desktopUser.id).catch((err) => {
-        console.error('Lỗi khởi tạo CSDL người dùng:', err);
-      });
+    if (isElectron && window.electronAPI) {
+      if (desktopUser) {
+        window.electronAPI.initUserDb(desktopUser.id).catch((err) => {
+          console.error('Lỗi khởi tạo CSDL người dùng:', err);
+        });
+      }
 
-      // Kiểm tra nếu chưa chọn ổ đĩa lần đầu
+      // Kiểm tra nếu chưa chọn ổ đĩa lần đầu -> Hiển thị hộp thoại chọn ổ đĩa ngay
       window.electronAPI.getStorageConfig().then((config) => {
         if (!config.isConfigured) {
           setShowStorageModal(true);
         }
+      }).catch((err) => {
+        console.error('Lỗi đọc cấu hình ổ đĩa:', err);
       });
     }
   }, [isElectron, desktopUser]);
@@ -132,21 +136,22 @@ function App() {
           // ================= MÔI TRƯỜNG ELECTRON DESKTOP =================
           <>
             {!desktopUser ? (
-              <DesktopLoginPage onLoginSuccess={handleLoginSuccess} />
+              <DesktopLoginPage
+                onLoginSuccess={handleLoginSuccess}
+                onOpenStorageModal={() => setShowStorageModal(true)}
+              />
             ) : (
-              <>
-                <MainLayout
-                  user={desktopUser}
-                  onLogout={handleLogout}
-                  onOpenStorageModal={() => setShowStorageModal(true)}
-                />
-                <StorageSetupModal
-                  isOpen={showStorageModal}
-                  onClose={() => setShowStorageModal(false)}
-                  onSaved={() => setShowStorageModal(false)}
-                />
-              </>
+              <MainLayout
+                user={desktopUser}
+                onLogout={handleLogout}
+                onOpenStorageModal={() => setShowStorageModal(true)}
+              />
             )}
+            <StorageSetupModal
+              isOpen={showStorageModal}
+              onClose={() => setShowStorageModal(false)}
+              onSaved={() => setShowStorageModal(false)}
+            />
           </>
         ) : (
           // ================= MÔI TRƯỜNG WEB (KHÔNG CÓ BẢN DÙNG THỬ) =================

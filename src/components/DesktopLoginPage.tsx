@@ -15,9 +15,10 @@ import type { AuthUser } from '../types';
 
 interface DesktopLoginPageProps {
   onLoginSuccess: (user: AuthUser) => void;
+  onOpenStorageModal?: () => void;
 }
 
-export default function DesktopLoginPage({ onLoginSuccess }: DesktopLoginPageProps) {
+export default function DesktopLoginPage({ onLoginSuccess, onOpenStorageModal }: DesktopLoginPageProps) {
   const { showToast } = useToast();
   const [tokenInput, setTokenInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -237,7 +238,7 @@ export default function DesktopLoginPage({ onLoginSuccess }: DesktopLoginPagePro
         </div>
 
         {/* Local Storage Privacy Note & Cloud Sync Tip */}
-        <div className="space-y-1 text-center">
+        <div className="space-y-2 text-center">
           <div className="flex items-center gap-2 text-[11px] text-slate-400 justify-center">
             <HardDrive className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>Dữ liệu lưu trên máy tính (SQLite). Không sử dụng máy chủ đám mây Neon.</span>
@@ -245,6 +246,18 @@ export default function DesktopLoginPage({ onLoginSuccess }: DesktopLoginPagePro
           <p className="text-[10px] text-slate-500">
             ☁️ <strong>Đồng bộ đa máy:</strong> Chọn lưu tại thư mục <code>OneDrive</code> hoặc <code>Google Drive</code> để dữ liệu tự động đồng bộ khi sang máy tính khác.
           </p>
+          {onOpenStorageModal && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={onOpenStorageModal}
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1.5 cursor-pointer underline underline-offset-4"
+              >
+                <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Cài đặt ổ đĩa lưu trữ (OneDrive / Ổ C: / Ổ D:)</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
