@@ -8,6 +8,7 @@ import Readers from './pages/Readers';
 import Books from './pages/Books';
 import SettingsPage from './pages/SettingsPage';
 import DownloadPage from './pages/DownloadPage';
+import WebLoginPage from './pages/WebLoginPage';
 import DesktopLoginPage from './components/DesktopLoginPage';
 import StorageSetupModal from './components/StorageSetupModal';
 import WebRestrictedPage from './components/WebRestrictedPage';
@@ -159,8 +160,10 @@ function App() {
             {/* Trang chủ & Cổng xác thực Clerk / Tải ứng dụng Desktop */}
             <Route path="/" element={<DownloadPage />} />
             <Route path="/download" element={<DownloadPage />} />
-            <Route path="/login" element={<DownloadPage />} />
-            <Route path="/auth" element={<DownloadPage />} />
+            <Route path="/login" element={<WebLoginPage />} />
+            <Route path="/auth" element={<WebLoginPage />} />
+            <Route path="/sign-in" element={<WebLoginPage />} />
+            <Route path="/sign-up" element={<WebLoginPage />} />
 
             {/* Chặn tất cả các route dùng thử trên Web */}
             <Route path="/app" element={<WebRestrictedPage />} />

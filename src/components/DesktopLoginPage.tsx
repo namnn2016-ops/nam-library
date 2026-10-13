@@ -27,8 +27,8 @@ export default function DesktopLoginPage({ onLoginSuccess, onOpenStorageModal }:
   const webAuthUrl =
     import.meta.env.VITE_WEB_AUTH_URL ||
     (typeof window !== 'undefined' && window.location.origin.includes('localhost')
-      ? 'http://localhost:5173/#/download'
-      : 'https://nam-library.vercel.app/#/download');
+      ? 'http://localhost:5173/#/login'
+      : 'https://nam-library.vercel.app/#/login');
 
   const handleOpenWeb = () => {
     if (window.electronAPI) {
