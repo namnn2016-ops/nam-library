@@ -9,7 +9,12 @@ import {
   UserCheck,
   HardDrive
 } from 'lucide-react';
-import { parseDesktopAuthToken, setStoredDesktopUser, generateDesktopAuthToken } from '../services/auth';
+import {
+  parseDesktopAuthToken,
+  setStoredDesktopUser,
+  generateDesktopAuthToken,
+  verifyTokenWithBackend
+} from '../services/auth';
 import { useToast } from '../context/ToastContext';
 import type { AuthUser } from '../types';
 
@@ -60,7 +65,9 @@ export default function DesktopLoginPage({ onLoginSuccess, onOpenStorageModal }:
 
     setLoading(true);
     try {
-      const user = parseDesktopAuthToken(tokenInput.trim());
+      const verifyRes = await verifyTokenWithBackend(tokenInput.trim());
+      const user = verifyRes.user || parseDesktopAuthToken(tokenInput.trim());
+
       if (!user) {
         throw new Error(
           'Chuỗi ký tự xác thực không hợp lệ hoặc đã hết hạn! Vui lòng tạo chuỗi mới trên Web và thử lại.'

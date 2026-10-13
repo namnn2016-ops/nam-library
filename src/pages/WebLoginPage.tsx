@@ -223,6 +223,11 @@ function WebLoginContent() {
                   )}
                 </button>
               </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-semibold px-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Mã xác thực được ký bảo mật bằng Clerk Secret Key (Chống giả mạo)</span>
+              </div>
             </div>
 
             {/* Guide Steps */}
