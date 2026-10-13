@@ -23,18 +23,28 @@ import ClerkAuthSection from '../components/ClerkAuthSection';
 // CẤU HÌNH CÁC ĐƯỜNG DẪN TẢI XUỐNG VÀ DỰ PHÒNG CHO NAM LIBRARY
 // Bạn có thể chỉnh sửa link trực tiếp ở đây hoặc cấu hình qua biến môi trường (.env / Vercel):
 // =========================================================================
+const rawExeUrl = import.meta.env.VITE_DOWNLOAD_EXE_URL || '';
+const gDriveUrl =
+  import.meta.env.VITE_DOWNLOAD_GDRIVE_URL ||
+  'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing';
+
 export const DOWNLOAD_CONFIG = {
-  // 1. Link tải file Setup .exe (hoặc link CDN tải trực tiếp)
-  exeUrl: import.meta.env.VITE_DOWNLOAD_EXE_URL || '/downloads/nam-libary-Setup-1.0.0.exe',
+  // 1. Link tải file Setup .exe: Ưu tiên link HTTP ngoại tuyến (Google Drive)
+  // để tránh việc máy chủ web (như Vercel) trả về tệp index.html vì không lưu file .exe > 100MB trong repo
+  exeUrl: rawExeUrl.startsWith('http') ? rawExeUrl : gDriveUrl,
 
   // 2. Link GitHub Releases chính thức
-  githubReleasesUrl: import.meta.env.VITE_DOWNLOAD_GITHUB_URL || 'https://github.com/namnn2016-ops/nam-library/releases',
+  githubReleasesUrl:
+    import.meta.env.VITE_DOWNLOAD_GITHUB_URL ||
+    'https://github.com/namnn2016-ops/nam-library/releases',
 
   // 3. Link Google Drive dự phòng
-  googleDriveUrl: import.meta.env.VITE_DOWNLOAD_GDRIVE_URL || 'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing',
+  googleDriveUrl: gDriveUrl,
 
   // 4. Link bản nén Portable (.zip) không cần cài đặt
-  portableUrl: import.meta.env.VITE_DOWNLOAD_PORTABLE_URL || '/downloads/nam-libary-portable-1.0.0.zip',
+  portableUrl:
+    import.meta.env.VITE_DOWNLOAD_PORTABLE_URL ||
+    'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing',
 };
 
 export default function DownloadPage() {
@@ -44,12 +54,15 @@ export default function DownloadPage() {
 
   const handleDownloadClick = () => {
     setDownloadStarted(true);
-    if (DOWNLOAD_CONFIG.exeUrl.startsWith('http')) {
-      window.open(DOWNLOAD_CONFIG.exeUrl, '_blank');
+    const downloadTarget = DOWNLOAD_CONFIG.exeUrl || DOWNLOAD_CONFIG.googleDriveUrl;
+
+    if (downloadTarget.startsWith('http')) {
+      window.open(downloadTarget, '_blank');
       return;
     }
+
     const link = document.createElement('a');
-    link.href = DOWNLOAD_CONFIG.exeUrl;
+    link.href = downloadTarget;
     link.setAttribute('download', 'nam-libary-Setup-1.0.0.exe');
     document.body.appendChild(link);
     link.click();
@@ -112,13 +125,13 @@ export default function DownloadPage() {
               <span>Đăng Nhập / Lấy Mã Desktop</span>
             </a>
 
-            <a
-              href="#download-section"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            <button
+              onClick={handleDownloadClick}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>Tải EXE Ngay</span>
-            </a>
+            </button>
           </div>
         </div>
       </nav>
@@ -155,7 +168,7 @@ export default function DownloadPage() {
                   <div className="flex items-center gap-2.5">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 animate-pulse" />
                     <span>
-                      <strong className="text-white">Bắt đầu tải xuống:</strong> File <code>nam-libary-Setup-1.0.0.exe</code> đang được trình duyệt tải về. Mở file để cài đặt ngay!
+                      <strong className="text-white">Đang mở trang tải xuống:</strong> Tệp cài đặt Windows (~123MB) đang được mở qua Google Drive. Hãy nhấn nút <strong>"Tải xuống"</strong> trên Google Drive để tải file <code>nam-libary-Setup-1.0.0.exe</code> về máy!
                     </span>
                   </div>
                   <button
