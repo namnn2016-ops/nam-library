@@ -7,9 +7,11 @@
 - **Ngăn xếp Công nghệ**:
   - **Core Desktop**: Electron.js
   - **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons + Recharts
-  - **Cơ sở dữ liệu**: SQLite (Cục bộ qua Electron) kết hợp Web Storage / Neon Cloud DB
+  - **Cơ sở dữ liệu**: SQLite cục bộ lưu trên máy tính (chọn ổ đĩa C:\ hoặc D:\ khi cài đặt/thiết lập). Mỗi tài khoản đăng nhập là một cơ sở dữ liệu riêng biệt độc lập, hoàn toàn KHÔNG sử dụng Neon Cloud.
+  - **Xác thực tài khoản (Auth)**: Sử dụng Clerk Authentication trên Web. Khi đăng nhập trên ứng dụng Desktop, app sẽ mở trình duyệt Web để xác thực Clerk; Web tự động sản sinh chuỗi ký tự ngẫu nhiên (Desktop Auth Code) để dán vào app Desktop đăng nhập thành công.
   - **Email Service**: Resend API
   - **Âm thanh**: Web Audio API (phát tiếng tít ngắn / tít dài bằng code synth không cần tải file ngoài)
+  - **Quy tắc vận hành**: KHÔNG có bản dùng thử trên Web. Web chỉ đóng vai trò cổng xác thực Clerk & trang tải bộ cài đặt Windows (.exe).
 
 ## 2. Thiết kế Giao diện (UI/UX)
 - **Bố cục chính (Layout)**:
@@ -19,8 +21,8 @@
     - Bạn đọc (Readers)
     - Sách (Books)
     - Cài đặt (Settings)
-  - **Giao diện hiện đại, sạch sẽ**: Tông màu Indigo / Slate / Modern Library cao cấp, bo tròn nhẹ nhàng (`rounded-xl`), phân cấp trực quan, card đổ bóng tinh tế, font chữ rõ ràng, KHÔNG dùng màu vàng đất / beige cổ lỗ sĩ.
-  - **Không có màn hình khóa PIN gây cản trở**: Mở app vào thẳng hệ thống với sidebar điều hướng đầy đủ.
+  - **Giao diện hiện đại, sạch sẽ**: Tông màu Indigo / Slate / Modern Library cao cấp, bo tròn nhẹ nhàng (`rounded-xl`), phân cấp trực quan, card đổ bóng tinh tế, font chữ rõ ràng.
+  - **Không dùng mã PIN**: Thay thế hoàn toàn bằng hệ thống Đăng nhập / Đăng ký Clerk qua chuỗi xác thực an toàn. Người dùng có thể chuyển đổi tài khoản và quản lý vị trí ổ đĩa lưu trữ trong Cài đặt.
 
 ---
 

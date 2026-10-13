@@ -294,7 +294,7 @@ export default function Readers() {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <RefreshCw className="w-8 h-8 mx-auto text-indigo-500 mb-2 animate-spin" />
-                    <p className="font-medium text-slate-600">Đang tải dữ liệu từ Neon Database...</p>
+                    <p className="font-medium text-slate-600">Đang tải dữ liệu từ cơ sở dữ liệu máy tính...</p>
                   </td>
                 </tr>
               ) : filteredReaders.length === 0 ? (

@@ -264,7 +264,7 @@ export default function Borrow() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-600">
             <Sparkles className="w-4 h-4" />
-            Module Cốt Lõi • Lưu Trữ Neon PostgreSQL
+            Module Cốt Lõi • Lưu Trữ SQLite Cục Bộ Trên Máy
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Mượn & Trả Sách Thông Minh

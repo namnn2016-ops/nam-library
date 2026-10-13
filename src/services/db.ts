@@ -1,6 +1,6 @@
-import sql from '../lib/neon';
 import type { Book, Reader, BorrowRecord, AppSettings, OverdueReaderInfo } from '../types';
 import { sendOverdueNotificationEmail, sendNearDueNotificationEmail } from './email';
+import { getStoredDesktopUser } from './auth';
 
 const DEFAULT_SETTINGS: AppSettings = {
   sound_enabled: true,
@@ -9,13 +9,46 @@ const DEFAULT_SETTINGS: AppSettings = {
   auto_email_enabled: true,
 };
 
+// Kiểm tra môi trường Electron
+const isElectron = () =>
+  typeof window !== 'undefined' &&
+  Boolean(window.electronAPI && typeof window.electronAPI.dbQuery === 'function');
+
+// Helper lưu trữ fallback cục bộ theo tài khoản nếu chạy ngoài Electron
+function getFallbackStorageKey(subKey: string): string {
+  const user = getStoredDesktopUser();
+  const userId = user ? user.id.replace(/[^a-zA-Z0-9_-]/g, '_') : 'guest';
+  return `nam_lib_${userId}_${subKey}`;
+}
+
+function getLocalData<T>(subKey: string, defaultValue: T): T {
+  try {
+    const raw = localStorage.getItem(getFallbackStorageKey(subKey));
+    return raw ? JSON.parse(raw) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+function setLocalData<T>(subKey: string, value: T): void {
+  try {
+    localStorage.setItem(getFallbackStorageKey(subKey), JSON.stringify(value));
+  } catch (err) {
+    console.error('Lỗi ghi LocalStorage:', err);
+  }
+}
+
 export const dbService = {
   // ==================== CÀI ĐẶT (SETTINGS) ====================
   async getSettings(): Promise<AppSettings> {
+    if (!isElectron()) {
+      return getLocalData<AppSettings>('settings', DEFAULT_SETTINGS);
+    }
+
     try {
-      const rows = (await sql.query(
+      const rows = await window.electronAPI!.dbQuery<{ setting_key: string; setting_value: string }>(
         'SELECT setting_key, setting_value FROM app_settings'
-      )) as Array<{ setting_key: string; setting_value: string }>;
+      );
 
       const map: Record<string, string> = {};
       rows.forEach((r) => {
@@ -29,7 +62,7 @@ export const dbService = {
         auto_email_enabled: map['auto_email_enabled'] !== 'false',
       };
     } catch (err) {
-      console.warn('Lỗi đọc settings từ Neon, dùng mặc định:', err);
+      console.warn('Lỗi đọc settings SQLite, dùng mặc định:', err);
       return DEFAULT_SETTINGS;
     }
   },
@@ -37,6 +70,11 @@ export const dbService = {
   async saveSettings(newSettings: Partial<AppSettings>): Promise<AppSettings> {
     const current = await this.getSettings();
     const updated = { ...current, ...newSettings };
+
+    if (!isElectron()) {
+      setLocalData('settings', updated);
+      return updated;
+    }
 
     try {
       const pairs = [
@@ -48,16 +86,16 @@ export const dbService = {
       ];
 
       for (const [key, val] of pairs) {
-        await sql.query(
+        await window.electronAPI!.dbRun(
           `INSERT INTO app_settings (setting_key, setting_value)
-           VALUES ($1, $2)
-           ON CONFLICT (setting_key) DO UPDATE SET setting_value = $2`,
+           VALUES (?, ?)
+           ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value`,
           [key, val]
         );
       }
     } catch (err) {
-      console.error('Lỗi lưu settings lên Neon:', err);
-      throw new Error('Không thể lưu cài đặt lên cơ sở dữ liệu Neon.');
+      console.error('Lỗi lưu settings vào SQLite cục bộ:', err);
+      throw new Error('Không thể lưu cài đặt vào cơ sở dữ liệu trên máy.');
     }
 
     return updated;
@@ -65,16 +103,19 @@ export const dbService = {
 
   // ==================== BẠN ĐỌC (READERS) ====================
   async getReaders(): Promise<Reader[]> {
-    // Tự động quét và dọn dẹp bạn đọc hết hạn trước khi tải danh sách
     await this.cleanupExpiredReaders();
 
+    if (!isElectron()) {
+      return getLocalData<Reader[]>('readers', []);
+    }
+
     try {
-      const rows = (await sql.query(
+      const rows = await window.electronAPI!.dbQuery<Reader>(
         `SELECT id, name, dob, email, avatar, expiry_date,
-                to_char(created_at, 'YYYY-MM-DD') as created_at
+                date(created_at) as created_at
          FROM readers
          ORDER BY created_at DESC, id ASC`
-      )) as Reader[];
+      );
 
       return rows.map((r) => ({
         id: String(r.id),
@@ -86,22 +127,28 @@ export const dbService = {
         created_at: r.created_at || '',
       }));
     } catch (err) {
-      console.error('Lỗi lấy danh sách bạn đọc từ Neon:', err);
+      console.error('Lỗi lấy danh sách bạn đọc từ SQLite:', err);
       return [];
     }
   },
 
   async getReaderById(id: string): Promise<Reader | null> {
     const cleanId = id.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const readers = getLocalData<Reader[]>('readers', []);
+      return readers.find((r) => r.id.toUpperCase() === cleanId) || null;
+    }
+
     try {
-      const rows = (await sql.query(
+      const rows = await window.electronAPI!.dbQuery<Reader>(
         `SELECT id, name, dob, email, avatar, expiry_date,
-                to_char(created_at, 'YYYY-MM-DD') as created_at
+                date(created_at) as created_at
          FROM readers
-         WHERE UPPER(id) = UPPER($1)
+         WHERE UPPER(id) = UPPER(?)
          LIMIT 1`,
         [cleanId]
-      )) as Reader[];
+      );
 
       if (rows.length === 0) return null;
       return {
@@ -109,7 +156,7 @@ export const dbService = {
         id: String(rows[0].id),
       };
     } catch (err) {
-      console.error('Lỗi tìm bạn đọc theo ID từ Neon:', err);
+      console.error('Lỗi tìm bạn đọc theo ID từ SQLite:', err);
       return null;
     }
   },
@@ -121,10 +168,24 @@ export const dbService = {
       throw new Error(`Mã bạn đọc "${cleanId}" đã tồn tại trong hệ thống!`);
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (!isElectron()) {
+      const readers = getLocalData<Reader[]>('readers', []);
+      const newReader: Reader = {
+        ...reader,
+        id: cleanId,
+        created_at: todayStr,
+      };
+      readers.unshift(newReader);
+      setLocalData('readers', readers);
+      return newReader;
+    }
+
     try {
-      await sql.query(
+      await window.electronAPI!.dbRun(
         `INSERT INTO readers (id, name, dob, email, avatar, expiry_date)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           cleanId,
           reader.name.trim(),
@@ -139,25 +200,36 @@ export const dbService = {
       return created!;
     } catch (err: unknown) {
       const error = err as Error;
-      console.error('Lỗi thêm bạn đọc vào Neon:', error);
-      throw new Error(error.message || 'Lỗi lưu bạn đọc lên Neon.');
+      console.error('Lỗi thêm bạn đọc vào SQLite:', error);
+      throw new Error(error.message || 'Lỗi lưu bạn đọc vào cơ sở dữ liệu trên máy.');
     }
   },
 
   async updateReader(updated: Reader): Promise<Reader> {
     const cleanId = updated.id.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const readers = getLocalData<Reader[]>('readers', []);
+      const idx = readers.findIndex((r) => r.id.toUpperCase() === cleanId);
+      if (idx !== -1) {
+        readers[idx] = { ...updated, id: cleanId };
+        setLocalData('readers', readers);
+      }
+      return updated;
+    }
+
     try {
-      await sql.query(
+      await window.electronAPI!.dbRun(
         `UPDATE readers
-         SET name = $2, dob = $3, email = $4, avatar = $5, expiry_date = $6
-         WHERE UPPER(id) = UPPER($1)`,
+         SET name = ?, dob = ?, email = ?, avatar = ?, expiry_date = ?
+         WHERE UPPER(id) = UPPER(?)`,
         [
-          cleanId,
           updated.name.trim(),
           updated.dob || null,
           updated.email ? updated.email.trim() : null,
           updated.avatar ? updated.avatar.trim() : null,
           updated.expiry_date || null,
+          cleanId,
         ]
       );
       return updated;
@@ -169,31 +241,45 @@ export const dbService = {
 
   async deleteReader(id: string): Promise<void> {
     const cleanId = id.trim().toUpperCase();
-    try {
-      // Kiểm tra xem bạn đọc có đang mượn sách chưa trả không
-      const activeBorrows = await this.getActiveBorrowsByReader(cleanId);
-      if (activeBorrows.length > 0) {
-        throw new Error('Bạn đọc này đang mượn sách chưa trả, không thể xóa!');
-      }
 
-      await sql.query('DELETE FROM readers WHERE UPPER(id) = UPPER($1)', [cleanId]);
+    const activeBorrows = await this.getActiveBorrowsByReader(cleanId);
+    if (activeBorrows.length > 0) {
+      throw new Error('Bạn đọc này đang mượn sách chưa trả, không thể xóa!');
+    }
+
+    if (!isElectron()) {
+      const readers = getLocalData<Reader[]>('readers', []);
+      setLocalData(
+        'readers',
+        readers.filter((r) => r.id.toUpperCase() !== cleanId)
+      );
+      return;
+    }
+
+    try {
+      await window.electronAPI!.dbRun('DELETE FROM readers WHERE UPPER(id) = UPPER(?)', [cleanId]);
     } catch (err: unknown) {
       const error = err as Error;
-      throw new Error(error.message || 'Lỗi xóa bạn đọc trên Neon.');
+      throw new Error(error.message || 'Lỗi xóa bạn đọc trên máy.');
     }
   },
 
-  /**
-   * Tự động xóa các bạn đọc hết hạn thẻ theo ngày hiện tại
-   */
   async cleanupExpiredReaders(): Promise<void> {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (!isElectron()) {
+      const readers = getLocalData<Reader[]>('readers', []);
+      const filtered = readers.filter((r) => !r.expiry_date || r.expiry_date >= todayStr);
+      setLocalData('readers', filtered);
+      return;
+    }
+
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      await sql.query(
+      await window.electronAPI!.dbRun(
         `DELETE FROM readers
          WHERE expiry_date IS NOT NULL
            AND expiry_date != ''
-           AND expiry_date < $1`,
+           AND expiry_date < ?`,
         [todayStr]
       );
     } catch (err) {
@@ -203,13 +289,17 @@ export const dbService = {
 
   // ==================== SÁCH (BOOKS) ====================
   async getBooks(): Promise<Book[]> {
+    if (!isElectron()) {
+      return getLocalData<Book[]>('books', []);
+    }
+
     try {
-      const rows = (await sql.query(
+      const rows = await window.electronAPI!.dbQuery<Book>(
         `SELECT id, title, owner, status,
-                to_char(created_at, 'YYYY-MM-DD') as created_at
+                date(created_at) as created_at
          FROM books
          ORDER BY created_at DESC, id ASC`
-      )) as Book[];
+      );
 
       return rows.map((b) => ({
         id: String(b.id),
@@ -219,22 +309,28 @@ export const dbService = {
         created_at: b.created_at || '',
       }));
     } catch (err) {
-      console.error('Lỗi lấy danh sách sách từ Neon:', err);
+      console.error('Lỗi lấy danh sách sách từ SQLite:', err);
       return [];
     }
   },
 
   async getBookById(id: string): Promise<Book | null> {
     const cleanId = id.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const books = getLocalData<Book[]>('books', []);
+      return books.find((b) => b.id.toUpperCase() === cleanId) || null;
+    }
+
     try {
-      const rows = (await sql.query(
+      const rows = await window.electronAPI!.dbQuery<Book>(
         `SELECT id, title, owner, status,
-                to_char(created_at, 'YYYY-MM-DD') as created_at
+                date(created_at) as created_at
          FROM books
-         WHERE UPPER(id) = UPPER($1)
+         WHERE UPPER(id) = UPPER(?)
          LIMIT 1`,
         [cleanId]
-      )) as Book[];
+      );
 
       if (rows.length === 0) return null;
       return {
@@ -243,7 +339,7 @@ export const dbService = {
         status: (rows[0].status as 'AVAILABLE' | 'BORROWED') || 'AVAILABLE',
       };
     } catch (err) {
-      console.error('Lỗi tìm sách theo ID từ Neon:', err);
+      console.error('Lỗi tìm sách theo ID từ SQLite:', err);
       return null;
     }
   },
@@ -255,10 +351,25 @@ export const dbService = {
       throw new Error(`Mã sách "${cleanId}" đã tồn tại trong hệ thống!`);
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (!isElectron()) {
+      const books = getLocalData<Book[]>('books', []);
+      const newBook: Book = {
+        ...book,
+        id: cleanId,
+        status: 'AVAILABLE',
+        created_at: todayStr,
+      };
+      books.unshift(newBook);
+      setLocalData('books', books);
+      return newBook;
+    }
+
     try {
-      await sql.query(
+      await window.electronAPI!.dbRun(
         `INSERT INTO books (id, title, owner, status)
-         VALUES ($1, $2, $3, 'AVAILABLE')`,
+         VALUES (?, ?, ?, 'AVAILABLE')`,
         [cleanId, book.title.trim(), book.owner ? book.owner.trim() : null]
       );
 
@@ -266,17 +377,29 @@ export const dbService = {
       return created!;
     } catch (err: unknown) {
       const error = err as Error;
-      throw new Error(error.message || 'Lỗi thêm sách vào Neon.');
+      console.error('Lỗi thêm sách vào SQLite:', error);
+      throw new Error(error.message || 'Lỗi lưu sách vào cơ sở dữ liệu.');
     }
   },
 
   async updateBook(book: Book): Promise<Book> {
     const cleanId = book.id.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const books = getLocalData<Book[]>('books', []);
+      const idx = books.findIndex((b) => b.id.toUpperCase() === cleanId);
+      if (idx !== -1) {
+        books[idx] = { ...book, id: cleanId };
+        setLocalData('books', books);
+      }
+      return book;
+    }
+
     try {
-      await sql.query(
+      await window.electronAPI!.dbRun(
         `UPDATE books
-         SET title = $2, owner = $3, status = $4
-         WHERE UPPER(id) = UPPER($1)`,
+         SET title = ?, owner = ?, status = ?
+         WHERE UPPER(id) = UPPER(?)`,
         [cleanId, book.title.trim(), book.owner || null, book.status]
       );
       return book;
@@ -288,13 +411,22 @@ export const dbService = {
 
   async deleteBook(id: string): Promise<void> {
     const cleanId = id.trim().toUpperCase();
-    try {
-      const activeBorrow = await this.getActiveBorrowByBook(cleanId);
-      if (activeBorrow) {
-        throw new Error('Sách này đang được mượn, không thể xóa!');
-      }
+    const activeBorrow = await this.getActiveBorrowByBook(cleanId);
+    if (activeBorrow) {
+      throw new Error('Sách này đang được mượn, không thể xóa!');
+    }
 
-      await sql.query('DELETE FROM books WHERE UPPER(id) = UPPER($1)', [cleanId]);
+    if (!isElectron()) {
+      const books = getLocalData<Book[]>('books', []);
+      setLocalData(
+        'books',
+        books.filter((b) => b.id.toUpperCase() !== cleanId)
+      );
+      return;
+    }
+
+    try {
+      await window.electronAPI!.dbRun('DELETE FROM books WHERE UPPER(id) = UPPER(?)', [cleanId]);
     } catch (err: unknown) {
       const error = err as Error;
       throw new Error(error.message || 'Lỗi xóa sách.');
@@ -303,19 +435,23 @@ export const dbService = {
 
   // ==================== MƯỢN / TRẢ (BORROW & RETURN) ====================
   async getBorrowRecords(): Promise<BorrowRecord[]> {
+    if (!isElectron()) {
+      return getLocalData<BorrowRecord[]>('borrow_records', []);
+    }
+
     try {
-      const rows = (await sql.query(`
+      const rows = await window.electronAPI!.dbQuery<BorrowRecord>(`
         SELECT br.id, br.book_id, br.reader_id,
                b.title as book_title, r.name as reader_name,
-               to_char(br.borrow_date, 'YYYY-MM-DD') as borrow_date,
-               to_char(br.due_date, 'YYYY-MM-DD') as due_date,
-               to_char(br.return_date, 'YYYY-MM-DD') as return_date,
+               date(br.borrow_date) as borrow_date,
+               date(br.due_date) as due_date,
+               date(br.return_date) as return_date,
                br.status, br.renew_count
         FROM borrow_records br
         LEFT JOIN books b ON UPPER(br.book_id) = UPPER(b.id)
         LEFT JOIN readers r ON UPPER(br.reader_id) = UPPER(r.id)
         ORDER BY br.id DESC
-      `)) as BorrowRecord[];
+      `);
 
       return rows.map((r) => ({
         ...r,
@@ -325,27 +461,33 @@ export const dbService = {
         reader_name: r.reader_name || r.reader_id,
       }));
     } catch (err) {
-      console.error('Lỗi lấy bản ghi mượn sách:', err);
+      console.error('Lỗi lấy bản ghi mượn sách từ SQLite:', err);
       return [];
     }
   },
 
   async getActiveBorrowsByReader(readerId: string): Promise<BorrowRecord[]> {
     const cleanId = readerId.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const all = getLocalData<BorrowRecord[]>('borrow_records', []);
+      return all.filter((b) => b.reader_id.toUpperCase() === cleanId && b.status === 'BORROWED');
+    }
+
     try {
-      const rows = (await sql.query(
+      const rows = await window.electronAPI!.dbQuery<BorrowRecord>(
         `SELECT br.id, br.book_id, br.reader_id,
                 b.title as book_title, r.name as reader_name,
-                to_char(br.borrow_date, 'YYYY-MM-DD') as borrow_date,
-                to_char(br.due_date, 'YYYY-MM-DD') as due_date,
+                date(br.borrow_date) as borrow_date,
+                date(br.due_date) as due_date,
                 br.status, br.renew_count
          FROM borrow_records br
          LEFT JOIN books b ON UPPER(br.book_id) = UPPER(b.id)
          LEFT JOIN readers r ON UPPER(br.reader_id) = UPPER(r.id)
-         WHERE UPPER(br.reader_id) = UPPER($1) AND br.status = 'BORROWED'
+         WHERE UPPER(br.reader_id) = UPPER(?) AND br.status = 'BORROWED'
          ORDER BY br.id DESC`,
         [cleanId]
-      )) as BorrowRecord[];
+      );
 
       return rows.map((r) => ({
         ...r,
@@ -362,20 +504,28 @@ export const dbService = {
 
   async getActiveBorrowByBook(bookId: string): Promise<BorrowRecord | null> {
     const cleanId = bookId.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const all = getLocalData<BorrowRecord[]>('borrow_records', []);
+      return (
+        all.find((b) => b.book_id.toUpperCase() === cleanId && b.status === 'BORROWED') || null
+      );
+    }
+
     try {
-      const rows = (await sql.query(
+      const rows = await window.electronAPI!.dbQuery<BorrowRecord>(
         `SELECT br.id, br.book_id, br.reader_id,
                 b.title as book_title, r.name as reader_name,
-                to_char(br.borrow_date, 'YYYY-MM-DD') as borrow_date,
-                to_char(br.due_date, 'YYYY-MM-DD') as due_date,
+                date(br.borrow_date) as borrow_date,
+                date(br.due_date) as due_date,
                 br.status, br.renew_count
          FROM borrow_records br
          LEFT JOIN books b ON UPPER(br.book_id) = UPPER(b.id)
          LEFT JOIN readers r ON UPPER(br.reader_id) = UPPER(r.id)
-         WHERE UPPER(br.book_id) = UPPER($1) AND br.status = 'BORROWED'
+         WHERE UPPER(br.book_id) = UPPER(?) AND br.status = 'BORROWED'
          LIMIT 1`,
         [cleanId]
-      )) as BorrowRecord[];
+      );
 
       if (rows.length === 0) return null;
       return {
@@ -394,11 +544,13 @@ export const dbService = {
   /**
    * Mượn sách
    */
-  async borrowBook(readerId: string, bookId: string): Promise<{ record: BorrowRecord; book: Book; reader: Reader }> {
+  async borrowBook(
+    readerId: string,
+    bookId: string
+  ): Promise<{ record: BorrowRecord; book: Book; reader: Reader }> {
     const cleanReaderId = readerId.trim().toUpperCase();
     const cleanBookId = bookId.trim().toUpperCase();
 
-    // 1. Kiểm tra bạn đọc
     const reader = await this.getReaderById(cleanReaderId);
     if (!reader) {
       throw new Error(`Không tìm thấy bạn đọc với mã: ${cleanReaderId}`);
@@ -411,14 +563,14 @@ export const dbService = {
       }
     }
 
-    // Kiểm tra giới hạn số lượng sách mượn
     const settings = await this.getSettings();
     const activeBorrows = await this.getActiveBorrowsByReader(cleanReaderId);
     if (settings.max_books_per_reader > 0 && activeBorrows.length >= settings.max_books_per_reader) {
-      throw new Error(`Bạn đọc đã mượn tối đa ${settings.max_books_per_reader} cuốn sách theo quy định!`);
+      throw new Error(
+        `Bạn đọc đã mượn tối đa ${settings.max_books_per_reader} cuốn sách theo quy định!`
+      );
     }
 
-    // 2. Kiểm tra sách
     const book = await this.getBookById(cleanBookId);
     if (!book) {
       throw new Error(`Không tìm thấy sách với mã: ${cleanBookId}`);
@@ -433,7 +585,6 @@ export const dbService = {
       );
     }
 
-    // 3. Tính hạn trả
     const borrowDays = settings.borrow_days || 14;
     const now = new Date();
     const dueDate = new Date();
@@ -442,22 +593,52 @@ export const dbService = {
     const borrowDateStr = now.toISOString().split('T')[0];
     const dueDateStr = dueDate.toISOString().split('T')[0];
 
-    // Thêm bản ghi vào Neon
-    const insertRes = (await sql.query(
-      `INSERT INTO borrow_records (book_id, reader_id, borrow_date, due_date, status, renew_count)
-       VALUES ($1, $2, $3::timestamp, $4::timestamp, 'BORROWED', 0)
-       RETURNING id`,
-      [cleanBookId, cleanReaderId, borrowDateStr, dueDateStr]
-    )) as Array<{ id: number }>;
+    let newRecordId: number | string = Date.now();
 
-    // Cập nhật trạng thái sách thành BORROWED
-    await sql.query(
-      "UPDATE books SET status = 'BORROWED' WHERE UPPER(id) = UPPER($1)",
+    if (!isElectron()) {
+      const allBorrows = getLocalData<BorrowRecord[]>('borrow_records', []);
+      const newRec: BorrowRecord = {
+        id: newRecordId,
+        book_id: book.id,
+        reader_id: reader.id,
+        book_title: book.title,
+        reader_name: reader.name,
+        borrow_date: borrowDateStr,
+        due_date: dueDateStr,
+        status: 'BORROWED',
+        renew_count: 0,
+      };
+      allBorrows.unshift(newRec);
+      setLocalData('borrow_records', allBorrows);
+
+      // Cập nhật trạng thái sách
+      const allBooks = getLocalData<Book[]>('books', []);
+      const bookIdx = allBooks.findIndex((b) => b.id.toUpperCase() === cleanBookId);
+      if (bookIdx !== -1) {
+        allBooks[bookIdx].status = 'BORROWED';
+        setLocalData('books', allBooks);
+      }
+
+      return { record: newRec, book: { ...book, status: 'BORROWED' }, reader };
+    }
+
+    const res = await window.electronAPI!.dbRun(
+      `INSERT INTO borrow_records (book_id, reader_id, borrow_date, due_date, status, renew_count)
+       VALUES (?, ?, ?, ?, 'BORROWED', 0)`,
+      [cleanBookId, cleanReaderId, borrowDateStr, dueDateStr]
+    );
+
+    if (res && res.lastID) {
+      newRecordId = res.lastID;
+    }
+
+    await window.electronAPI!.dbRun(
+      "UPDATE books SET status = 'BORROWED' WHERE UPPER(id) = UPPER(?)",
       [cleanBookId]
     );
 
     const newRecord: BorrowRecord = {
-      id: insertRes[0]?.id || Date.now(),
+      id: newRecordId,
       book_id: book.id,
       reader_id: reader.id,
       book_title: book.title,
@@ -468,13 +649,15 @@ export const dbService = {
       renew_count: 0,
     };
 
-    return { record: newRecord, book, reader };
+    return { record: newRecord, book: { ...book, status: 'BORROWED' }, reader };
   },
 
   /**
    * Trả sách (Tự động theo mã sách)
    */
-  async returnBook(bookId: string): Promise<{ record: BorrowRecord; book: Book; readerName: string }> {
+  async returnBook(
+    bookId: string
+  ): Promise<{ record: BorrowRecord; book: Book; readerName: string }> {
     const cleanBookId = bookId.trim().toUpperCase();
     const book = await this.getBookById(cleanBookId);
     if (!book) {
@@ -488,17 +671,38 @@ export const dbService = {
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Cập nhật bản ghi mượn sang RETURNED
-    await sql.query(
+    if (!isElectron()) {
+      const allBorrows = getLocalData<BorrowRecord[]>('borrow_records', []);
+      const bIdx = allBorrows.findIndex((b) => String(b.id) === String(activeBorrow.id));
+      if (bIdx !== -1) {
+        allBorrows[bIdx].status = 'RETURNED';
+        allBorrows[bIdx].return_date = todayStr;
+        setLocalData('borrow_records', allBorrows);
+      }
+
+      const allBooks = getLocalData<Book[]>('books', []);
+      const bookIdx = allBooks.findIndex((b) => b.id.toUpperCase() === cleanBookId);
+      if (bookIdx !== -1) {
+        allBooks[bookIdx].status = 'AVAILABLE';
+        setLocalData('books', allBooks);
+      }
+
+      return {
+        record: { ...activeBorrow, status: 'RETURNED', return_date: todayStr },
+        book: { ...book, status: 'AVAILABLE' },
+        readerName: activeBorrow.reader_name || activeBorrow.reader_id,
+      };
+    }
+
+    await window.electronAPI!.dbRun(
       `UPDATE borrow_records
-       SET status = 'RETURNED', return_date = $2::timestamp
-       WHERE id = $1`,
-      [activeBorrow.id, todayStr]
+       SET status = 'RETURNED', return_date = ?
+       WHERE id = ?`,
+      [todayStr, activeBorrow.id]
     );
 
-    // Cập nhật sách sang AVAILABLE
-    await sql.query(
-      "UPDATE books SET status = 'AVAILABLE' WHERE UPPER(id) = UPPER($1)",
+    await window.electronAPI!.dbRun(
+      "UPDATE books SET status = 'AVAILABLE' WHERE UPPER(id) = UPPER(?)",
       [cleanBookId]
     );
 
@@ -508,30 +712,44 @@ export const dbService = {
         status: 'RETURNED',
         return_date: todayStr,
       },
-      book,
+      book: { ...book, status: 'AVAILABLE' },
       readerName: activeBorrow.reader_name || activeBorrow.reader_id,
     };
   },
 
   /**
-   * Gia hạn sách
+   * Gia hạn sách (Renew)
    */
   async renewBooks(recordIds: (string | number)[]): Promise<BorrowRecord[]> {
     const settings = await this.getSettings();
     const daysToAdd = settings.borrow_days || 14;
-    const renewed: BorrowRecord[] = [];
+
+    if (!isElectron()) {
+      const allBorrows = getLocalData<BorrowRecord[]>('borrow_records', []);
+      for (const rid of recordIds) {
+        const item = allBorrows.find((b) => String(b.id) === String(rid));
+        if (item && item.status === 'BORROWED') {
+          const d = new Date(item.due_date);
+          d.setDate(d.getDate() + daysToAdd);
+          item.due_date = d.toISOString().split('T')[0];
+          item.renew_count = (item.renew_count || 0) + 1;
+        }
+      }
+      setLocalData('borrow_records', allBorrows);
+      return allBorrows.filter((b) => recordIds.map(String).includes(String(b.id)));
+    }
 
     for (const rid of recordIds) {
-      await sql.query(
+      await window.electronAPI!.dbRun(
         `UPDATE borrow_records
-         SET due_date = due_date + ($2 || ' days')::interval,
+         SET due_date = date(due_date, '+' || ? || ' days'),
              renew_count = COALESCE(renew_count, 0) + 1
-         WHERE id = $1 AND status = 'BORROWED'`,
-        [rid, daysToAdd]
+         WHERE id = ? AND status = 'BORROWED'`,
+        [daysToAdd, rid]
       );
     }
 
-    return renewed;
+    return this.getBorrowRecords();
   },
 
   // ==================== DASHBOARD STATS ====================
@@ -548,7 +766,6 @@ export const dbService = {
     const remainingBooksCount = books.filter((b) => b.status === 'AVAILABLE').length;
     const totalReadersCount = readers.length;
 
-    // Xác định bạn đọc quá hạn
     const overdueReaderMap = new Map<string, OverdueReaderInfo>();
 
     activeBorrows.forEach((b) => {
@@ -578,7 +795,6 @@ export const dbService = {
     const overdueReadersList = Array.from(overdueReaderMap.values());
     const overdueReadersCount = overdueReadersList.length;
 
-    // Dữ liệu biểu đồ 6 tháng gần nhất từ dữ liệu thực tế
     const today = new Date();
     const chartData = [];
     for (let i = 5; i >= 0; i--) {
@@ -613,10 +829,7 @@ export const dbService = {
     };
   },
 
-  /**
-   * Tự động quét và gửi email khi sách GẦN QUÁ HẠN hoặc ĐÃ QUÁ HẠN
-   * Theo đúng yêu cầu: "gần quá hạn hoặc quá là tự động gửi mail luôn"
-   */
+  // ==================== TỰ ĐỘNG GỬI EMAIL ====================
   async checkAndSendAutoEmails(): Promise<string[]> {
     try {
       const settings = await this.getSettings();
@@ -651,19 +864,19 @@ export const dbService = {
 
         if (!emailType) continue;
 
-        // Kiểm tra xem đã gửi email hôm nay cho bạn đọc/sách này chưa
-        const checkSent = (await sql.query(
-          `SELECT id FROM email_notifications
-           WHERE reader_id = $1 AND book_id = $2 AND email_type = $3 AND sent_date = $4
-           LIMIT 1`,
-          [reader.id, b.book_id, emailType, todayStr]
-        )) as Array<{ id: number }>;
+        if (isElectron()) {
+          const checkSent = await window.electronAPI!.dbQuery<{ id: number }>(
+            `SELECT id FROM email_notifications
+             WHERE reader_id = ? AND book_id = ? AND email_type = ? AND sent_date = ?
+             LIMIT 1`,
+            [reader.id, b.book_id, emailType, todayStr]
+          );
 
-        if (checkSent.length > 0) {
-          continue; // Đã gửi hôm nay rồi, không gửi trùng lặp
+          if (checkSent.length > 0) {
+            continue;
+          }
         }
 
-        // Tiến hành gửi email tự động
         let result;
         if (emailType === 'OVERDUE') {
           result = await sendOverdueNotificationEmail(
@@ -683,16 +896,19 @@ export const dbService = {
         }
 
         if (result.success) {
-          // Lưu vết vào Neon để không spam lại trong ngày
-          await sql.query(
-            `INSERT INTO email_notifications (record_id, reader_id, reader_email, book_id, email_type, sent_date)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [Number(b.id) || null, reader.id, reader.email, b.book_id, emailType, todayStr]
-          );
+          if (isElectron()) {
+            await window.electronAPI!.dbRun(
+              `INSERT INTO email_notifications (record_id, reader_id, reader_email, book_id, email_type, sent_date)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [Number(b.id) || null, reader.id, reader.email, b.book_id, emailType, todayStr]
+            );
+          }
 
           const typeText = emailType === 'OVERDUE' ? 'quá hạn' : 'gần quá hạn';
           notificationsSent.push(
-            `Đã tự động gửi email nhắc ${typeText} đến ${reader.name} (${reader.email}) cho cuốn "${b.book_title || b.book_id}"!`
+            `Đã tự động gửi email nhắc ${typeText} đến ${reader.name} (${reader.email}) cho cuốn "${
+              b.book_title || b.book_id
+            }"!`
           );
         }
       }
@@ -705,17 +921,21 @@ export const dbService = {
   },
 
   /**
-   * Xóa sạch toàn bộ dữ liệu trên Neon
+   * Xóa sạch toàn bộ dữ liệu trên máy tính cho tài khoản hiện tại
    */
   async clearAllData(): Promise<void> {
+    if (!isElectron()) {
+      setLocalData('readers', []);
+      setLocalData('books', []);
+      setLocalData('borrow_records', []);
+      return;
+    }
+
     try {
-      await sql.query('DELETE FROM email_notifications');
-      await sql.query('DELETE FROM borrow_records');
-      await sql.query('DELETE FROM books');
-      await sql.query('DELETE FROM readers');
+      await window.electronAPI!.dbClear();
     } catch (err: unknown) {
       const error = err as Error;
-      throw new Error(error.message || 'Lỗi khi xóa dữ liệu trên Neon.');
+      throw new Error(error.message || 'Lỗi khi xóa dữ liệu cục bộ.');
     }
   },
 };

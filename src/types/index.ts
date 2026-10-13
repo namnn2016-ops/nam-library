@@ -46,3 +46,21 @@ export interface OverdueReaderInfo {
     days_overdue: number;
   }>;
 }
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  loginAt?: string;
+}
+
+export interface DesktopAuthPayload {
+  userId: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  createdAt: number;
+  nonce: string;
+}
+

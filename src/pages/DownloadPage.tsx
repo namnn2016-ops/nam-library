@@ -16,9 +16,10 @@ import {
   ArrowRight,
   HelpCircle,
   Check,
-  Copy
+  Copy,
+  KeyRound
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import ClerkAuthSection from '../components/ClerkAuthSection';
 
 // =========================================================================
 // CẤU HÌNH CÁC ĐƯỜNG DẪN TẢI XUỐNG VÀ DỰ PHÒNG CHO NAM LIBRARY
@@ -95,6 +96,7 @@ export default function DownloadPage() {
 
           {/* Nav Links */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+            <a href="#auth-section" className="hover:text-cyan-400 transition-colors font-bold text-indigo-300">Đăng Nhập Clerk</a>
             <a href="#features" className="hover:text-indigo-400 transition-colors">Tính năng</a>
             <a href="#installation" className="hover:text-indigo-400 transition-colors">Cài đặt</a>
             <a href="#shortcuts" className="hover:text-indigo-400 transition-colors">Phím tắt</a>
@@ -104,13 +106,13 @@ export default function DownloadPage() {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-3">
-            <Link
-              to="/app"
+            <a
+              href="#auth-section"
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/80 transition-all shadow-xs"
             >
-              <span>Dùng Thử Bản Web</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-            </Link>
+              <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Đăng Nhập / Lấy Mã Desktop</span>
+            </a>
 
             <a
               href="#download-section"
@@ -145,7 +147,7 @@ export default function DownloadPage() {
 
             {/* Description */}
             <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Phần mềm máy tính Windows được xây dựng với công nghệ hiện đại. Tối ưu hoàn hảo cho máy quét mã vạch qua phím tắt <span className="font-mono text-cyan-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F6</span> / <span className="font-mono text-rose-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F9</span>, hệ thống phát âm thanh thông minh, tự động gửi email nhắc hạn qua <span className="text-indigo-300 font-semibold">Resend API</span> và đồng bộ đám mây <span className="text-cyan-300 font-semibold">Neon DB</span>.
+              Phần mềm máy tính Windows được xây dựng với công nghệ hiện đại. Tối ưu hoàn hảo cho máy quét mã vạch qua phím tắt <span className="font-mono text-cyan-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F6</span> / <span className="font-mono text-rose-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F9</span>, hệ thống phát âm thanh thông minh, tự động gửi email nhắc hạn qua <span className="text-indigo-300 font-semibold">Resend API</span> và lưu trữ dữ liệu cục bộ riêng biệt cho từng tài khoản trên ổ đĩa máy tính (SQLite).
             </p>
 
             {/* Download CTA Card */}
@@ -180,14 +182,14 @@ export default function DownloadPage() {
                   </div>
                 </button>
 
-                {/* Web Demo Button */}
-                <Link
-                  to="/app"
+                {/* Web Auth Link Button */}
+                <a
+                  href="#auth-section"
                   className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700/80 text-white font-bold text-sm border border-slate-700 transition-all hover:-translate-y-0.5"
                 >
-                  <ExternalLink className="w-4 h-4 text-cyan-400" />
-                  <span>Dùng Thử Bản Web</span>
-                </Link>
+                  <KeyRound className="w-4 h-4 text-cyan-400" />
+                  <span>Đăng Nhập Lấy Mã Desktop</span>
+                </a>
               </div>
 
               {/* Download Meta Information */}
@@ -275,7 +277,7 @@ export default function DownloadPage() {
 
                 <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-emerald-500/30 px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[11px] font-bold text-slate-200">Đồng Bộ Neon Cloud</span>
+                  <span className="text-[11px] font-bold text-slate-200">Lưu Trữ Ổ Đĩa Cục Bộ</span>
                 </div>
               </div>
 
@@ -290,6 +292,11 @@ export default function DownloadPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Clerk Authentication & Desktop Auth Code Generation Section */}
+      <section id="auth-section" className="py-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto relative z-10">
+        <ClerkAuthSection />
       </section>
 
       {/* Feature Showcase Tabs Section */}
@@ -640,7 +647,7 @@ export default function DownloadPage() {
                 Phần mềm có cần kết nối Internet không?
               </h3>
               <p className="text-slate-400 leading-relaxed">
-                Ứng dụng có thể chạy ngoại tuyến (offline) với cơ sở dữ liệu SQLite trên máy. Khi có kết nối mạng, ứng dụng sẽ đồng bộ tự động với cơ sở dữ liệu Neon Cloud và kích hoạt tính năng gửi email qua Resend API.
+                Ứng dụng có thể chạy ngoại tuyến (offline) hoàn toàn với cơ sở dữ liệu SQLite lưu trực tiếp trên ổ đĩa máy tính. Chỉ cần kết nối Internet khi bạn muốn gửi email nhắc hạn qua Resend API hoặc đăng nhập tài khoản Clerk.
               </p>
             </div>
 
@@ -657,10 +664,10 @@ export default function DownloadPage() {
             <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
               <h3 className="font-bold text-sm text-slate-200 flex items-center gap-2">
                 <HelpCircle className="w-4 h-4 text-emerald-400" />
-                Nếu cài lại máy tính thì dữ liệu thư viện có bị mất không?
+                Dữ liệu thư viện được lưu ở đâu? Mỗi tài khoản có bị lẫn dữ liệu không?
               </h3>
               <p className="text-slate-400 leading-relaxed">
-                Không! Dữ liệu sách, bạn đọc và lịch sử mượn trả được lưu trữ an toàn trên Neon Cloud PostgreSQL. Khi bạn cài lại ứng dụng trên máy mới và gắn chuỗi kết nối, toàn bộ dữ liệu sẽ tự động khôi phục nguyên vẹn.
+                Dữ liệu được lưu trữ trực tiếp trên ổ đĩa máy tính (như C:\ hoặc D:\NamLibraryData) theo lựa chọn của bạn khi cài đặt. Mỗi tài khoản có cơ sở dữ liệu SQLite hoàn toàn riêng biệt và độc lập, không dùng máy chủ Neon Cloud, đảm bảo dữ liệu riêng tư và an toàn tuyệt đối.
               </p>
             </div>
           </div>
@@ -681,7 +688,7 @@ export default function DownloadPage() {
           </div>
 
           <div className="flex items-center gap-6">
-            <Link to="/app" className="hover:text-indigo-400 transition-colors">Vào Trang Quản Lý</Link>
+            <a href="#auth-section" className="hover:text-indigo-400 transition-colors">Đăng Nhập Clerk</a>
             <a href="#download-section" className="hover:text-cyan-400 transition-colors">Tải File EXE</a>
             <a href="#faq" className="hover:text-slate-300 transition-colors">Trợ Giúp</a>
           </div>

@@ -89,12 +89,8 @@ CREATE TABLE IF NOT EXISTS penalty_records (
 
 -- ==========================================
 -- DỮ LIỆU KHỞI TẠO MẶC ĐỊNH (INITIAL DATA)
+-- Hệ thống sử dụng Clerk Authentication qua Web-to-Desktop Auth Token (Không dùng mã PIN).
 -- ==========================================
-
--- Tạo mật khẩu PIN mặc định là '5416' cho quản trị viên
-INSERT INTO admin_users (username, password_hash, full_name) 
-VALUES ('admin', '5416', 'Quản trị viên')
-ON CONFLICT (username) DO NOTHING;
 
 -- Khởi tạo các cấu hình hệ thống mặc định
 INSERT INTO app_settings (setting_key, setting_value, description) VALUES
