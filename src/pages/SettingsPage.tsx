@@ -33,6 +33,7 @@ import {
   setStoredClerkSecretKey,
   testClerkSecretKey
 } from '../services/auth';
+import { getClerkPublishableKey, setClerkPublishableKey } from '../services/clerkConfig';
 import type { AppSettings, AuthUser } from '../types';
 import type { StorageConfig } from '../types/electron';
 
@@ -50,9 +51,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const envApiKey = import.meta.env.VITE_RESEND_API_KEY || '';
   const envFromEmail = import.meta.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-  const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_bmFtLWxpYnJhcnkuY2xlcmsuYWNjb3VudHMuZGV2JA';
 
-  // State quản lý Clerk Secret Key
+  // State quản lý Clerk Keys
+  const [clerkPubInput, setClerkPubInput] = useState<string>('');
   const [clerkSecret, setClerkSecret] = useState<string>('');
   const [showSecret, setShowSecret] = useState(false);
   const [testingSecret, setTestingSecret] = useState(false);
@@ -61,6 +62,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const user = getStoredDesktopUser();
     setCurrentUser(user);
+    setClerkPubInput(getClerkPublishableKey());
     setClerkSecret(getStoredClerkSecretKey());
 
     const fetchConfig = async () => {
@@ -78,6 +80,12 @@ export default function SettingsPage() {
     };
     fetchConfig();
   }, []);
+
+  const handleSaveClerkPubKey = () => {
+    setClerkPublishableKey(clerkPubInput);
+    playSuccessBeep();
+    showToast('Đã lưu Clerk Publishable Key thành công!', 'success');
+  };
 
   const handleSaveClerkSecret = () => {
     setStoredClerkSecretKey(clerkSecret);
@@ -616,17 +624,30 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-4 text-xs">
-            {/* Publishable Key info */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-700 flex items-center gap-2">
+            {/* Publishable Key Input */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="font-semibold text-slate-800 flex items-center gap-2">
                   <Key className="w-4 h-4 text-slate-400" />
-                  Clerk Publishable Key (Dành cho giao diện Web):
+                  Clerk Publishable Key (pk_test_... hoặc pk_live_...):
                 </span>
-                <span className="font-mono text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                  {clerkPublishableKey.substring(0, 15)}...
-                </span>
+                <button
+                  type="button"
+                  onClick={handleSaveClerkPubKey}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors cursor-pointer self-start sm:self-auto"
+                >
+                  Lưu Publishable Key
+                </button>
               </div>
+
+              <input
+                type="text"
+                value={clerkPubInput}
+                onChange={(e) => setClerkPubInput(e.target.value)}
+                placeholder="Điền mã pk_test_... lấy từ Clerk Dashboard > API Keys"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-mono font-semibold outline-none focus:border-indigo-600"
+              />
+
               <p className="text-[11px] text-slate-500">
                 Khóa công khai dùng để hiển thị hộp thoại đăng nhập chính thức của Clerk trên trình duyệt.
               </p>

@@ -15,6 +15,8 @@ import WebRestrictedPage from './components/WebRestrictedPage';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { dbService } from './services/db';
 import { getStoredDesktopUser, logoutDesktopUser } from './services/auth';
+import { getClerkPublishableKey } from './services/clerkConfig';
+import { ClerkProvider } from '@clerk/clerk-react';
 import type { AuthUser } from './types';
 
 interface MainLayoutProps {
@@ -156,23 +158,30 @@ function App() {
           </>
         ) : (
           // ================= MÔI TRƯỜNG WEB (KHÔNG CÓ BẢN DÙNG THỬ) =================
-          <Routes>
-            {/* Trang chủ & Cổng xác thực Clerk / Tải ứng dụng Desktop */}
-            <Route path="/" element={<DownloadPage />} />
-            <Route path="/download" element={<DownloadPage />} />
-            <Route path="/login" element={<WebLoginPage />} />
-            <Route path="/auth" element={<WebLoginPage />} />
-            <Route path="/sign-in" element={<WebLoginPage />} />
-            <Route path="/sign-up" element={<WebLoginPage />} />
+          <ClerkProvider
+            publishableKey={
+              getClerkPublishableKey() ||
+              'pk_test_bmFtLWxpYnJhcnkuY2xlcmsuYWNjb3VudHMuZGV2JA'
+            }
+          >
+            <Routes>
+              {/* Trang chủ & Cổng xác thực Clerk / Tải ứng dụng Desktop */}
+              <Route path="/" element={<DownloadPage />} />
+              <Route path="/download" element={<DownloadPage />} />
+              <Route path="/login/*" element={<WebLoginPage />} />
+              <Route path="/auth/*" element={<WebLoginPage />} />
+              <Route path="/sign-in/*" element={<WebLoginPage />} />
+              <Route path="/sign-up/*" element={<WebLoginPage />} />
 
-            {/* Chặn tất cả các route dùng thử trên Web */}
-            <Route path="/app" element={<WebRestrictedPage />} />
-            <Route path="/borrow" element={<WebRestrictedPage />} />
-            <Route path="/readers" element={<WebRestrictedPage />} />
-            <Route path="/books" element={<WebRestrictedPage />} />
-            <Route path="/settings" element={<WebRestrictedPage />} />
-            <Route path="*" element={<WebRestrictedPage />} />
-          </Routes>
+              {/* Chặn tất cả các route dùng thử trên Web */}
+              <Route path="/app" element={<WebRestrictedPage />} />
+              <Route path="/borrow" element={<WebRestrictedPage />} />
+              <Route path="/readers" element={<WebRestrictedPage />} />
+              <Route path="/books" element={<WebRestrictedPage />} />
+              <Route path="/settings" element={<WebRestrictedPage />} />
+              <Route path="*" element={<WebRestrictedPage />} />
+            </Routes>
+          </ClerkProvider>
         )}
       </Router>
     </ToastProvider>
