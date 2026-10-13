@@ -159,6 +159,8 @@ function App() {
             {/* Trang chủ & Cổng xác thực Clerk / Tải ứng dụng Desktop */}
             <Route path="/" element={<DownloadPage />} />
             <Route path="/download" element={<DownloadPage />} />
+            <Route path="/login" element={<DownloadPage />} />
+            <Route path="/auth" element={<DownloadPage />} />
 
             {/* Chặn tất cả các route dùng thử trên Web */}
             <Route path="/app" element={<WebRestrictedPage />} />
