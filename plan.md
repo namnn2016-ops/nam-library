@@ -7,7 +7,9 @@
 - **Ngăn xếp Công nghệ**:
   - **Core Desktop**: Electron.js
   - **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons + Recharts
-  - **Cơ sở dữ liệu**: SQLite cục bộ lưu trên máy tính (chọn ổ đĩa C:\ hoặc D:\ khi cài đặt/thiết lập). Mỗi tài khoản đăng nhập là một cơ sở dữ liệu riêng biệt độc lập, hoàn toàn KHÔNG sử dụng Neon Cloud.
+  - **Cơ sở dữ liệu**: SQLite cục bộ lưu trên máy tính (hỗ trợ chọn ổ đĩa C:\, D:\ hoặc thư mục OneDrive / Google Drive khi cài đặt/thiết lập). Chế độ WAL (Write-Ahead Logging) giúp ứng dụng hoạt động mượt mà, không bị khóa file khi OneDrive đồng bộ nền.
+  - **Đồng bộ đa máy (Cách 2)**: Tự động phát hiện và gợi ý lưu dữ liệu vào thư mục OneDrive / Google Drive. Khi sang máy khác có cùng OneDrive/Google Drive, dữ liệu thư viện tự động đồng bộ sang máy mới mà không cần server cloud riêng.
+  - **Sao lưu & Khôi phục**: Tính năng Xuất file sao lưu (.db) và Khôi phục từ file trong Cài đặt để dự phòng chuyển máy thủ công.
   - **Xác thực tài khoản (Auth)**: Sử dụng Clerk Authentication trên Web. Khi đăng nhập trên ứng dụng Desktop, app sẽ mở trình duyệt Web để xác thực Clerk; Web tự động sản sinh chuỗi ký tự ngẫu nhiên (Desktop Auth Code) để dán vào app Desktop đăng nhập thành công.
   - **Email Service**: Resend API
   - **Âm thanh**: Web Audio API (phát tiếng tít ngắn / tít dài bằng code synth không cần tải file ngoài)

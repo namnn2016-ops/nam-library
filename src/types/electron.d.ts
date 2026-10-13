@@ -2,6 +2,18 @@ export interface DriveInfo {
   letter: string;
   path: string;
   label: string;
+  isCloud?: boolean;
+}
+
+export interface CloudFolderInfo {
+  id: string;
+  name: string;
+  baseDir: string;
+  path: string;
+  label: string;
+  isCloud: boolean;
+  isRecommended: boolean;
+  description: string;
 }
 
 export interface StorageConfig {
@@ -9,6 +21,8 @@ export interface StorageConfig {
   isConfigured: boolean;
   currentUserId: string | null;
   drives?: DriveInfo[];
+  cloudFolders?: CloudFolderInfo[];
+  isCloudSync?: boolean;
   activeDbPath?: string | null;
 }
 
@@ -19,10 +33,13 @@ export interface ElectronAPI {
   dbClear: () => Promise<{ success: boolean }>;
   initUserDb: (userId: string) => Promise<{ success: boolean; dbPath: string; userId: string }>;
   getStorageConfig: () => Promise<StorageConfig>;
-  setStorageDirectory: (newDir: string) => Promise<{ success: boolean; dataDir: string }>;
-  selectDirectory: () => Promise<{ success: boolean; dataDir: string; activeDbPath: string } | null>;
+  setStorageDirectory: (newDir: string) => Promise<{ success: boolean; dataDir: string; isCloudSync?: boolean }>;
+  selectDirectory: () => Promise<{ success: boolean; dataDir: string; activeDbPath: string; isCloudSync?: boolean } | null>;
   getAvailableDrives: () => Promise<DriveInfo[]>;
+  getCloudFolders: () => Promise<CloudFolderInfo[]>;
   openStorageFolder: () => Promise<boolean>;
+  exportBackup: () => Promise<{ success: boolean; filePath?: string; canceled?: boolean; message?: string }>;
+  importBackup: () => Promise<{ success: boolean; targetDbPath?: string; canceled?: boolean; message?: string }>;
   openExternal: (url: string) => Promise<boolean>;
 }
 

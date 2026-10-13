@@ -12,7 +12,10 @@ import {
   HardDrive,
   FolderOpen,
   LogOut,
-  UserCheck
+  Cloud,
+  Download,
+  Upload,
+  ShieldCheck
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep, playErrorBeep } from '../services/audio';
@@ -84,6 +87,51 @@ export default function SettingsPage() {
     }
   };
 
+  const handleExportBackup = async () => {
+    if (!window.electronAPI?.exportBackup) {
+      showToast('Tính năng xuất sao lưu chỉ hoạt động trên Desktop!', 'info');
+      return;
+    }
+    try {
+      const res = await window.electronAPI.exportBackup();
+      if (res.success && res.filePath) {
+        playSuccessBeep();
+        showToast(`Đã xuất tệp sao lưu thành công tại: ${res.filePath}`, 'success');
+      } else if (!res.canceled) {
+        showToast(res.message || 'Lỗi khi xuất tệp sao lưu!', 'error');
+      }
+    } catch (err: unknown) {
+      const error = err as Error;
+      showToast(error.message || 'Lỗi khi xuất tệp sao lưu!', 'error');
+    }
+  };
+
+  const handleImportBackup = async () => {
+    if (!window.electronAPI?.importBackup) {
+      showToast('Tính năng khôi phục chỉ hoạt động trên Desktop!', 'info');
+      return;
+    }
+    if (
+      confirm(
+        'CẢNH BÁO: Khôi phục từ file sao lưu sẽ ghi đè toàn bộ dữ liệu hiện tại của tài khoản này bằng dữ liệu trong file backup. Bạn có muốn tiếp tục?'
+      )
+    ) {
+      try {
+        const res = await window.electronAPI.importBackup();
+        if (res.success) {
+          playSuccessBeep();
+          showToast('Khôi phục dữ liệu thành công! Đang tải lại dữ liệu...', 'success');
+          setTimeout(() => window.location.reload(), 1000);
+        } else if (!res.canceled) {
+          showToast(res.message || 'Lỗi khi khôi phục dữ liệu!', 'error');
+        }
+      } catch (err: unknown) {
+        const error = err as Error;
+        showToast(error.message || 'Lỗi khi khôi phục dữ liệu!', 'error');
+      }
+    }
+  };
+
   const handleLogout = () => {
     if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?')) {
       logoutDesktopUser();
@@ -137,7 +185,7 @@ export default function SettingsPage() {
           Cài Đặt Hệ Thống
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Quản lý tài khoản, ổ đĩa lưu trữ cục bộ, quy định mượn trả và dịch vụ email
+          Quản lý tài khoản, đồng bộ đa máy (OneDrive), sao lưu dữ liệu và dịch vụ email
         </p>
       </div>
 
@@ -183,17 +231,17 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* KHỐI 1: Ổ ĐĨA & VỊ TRÍ LƯU TRỮ DỮ LIỆU CỤC BỘ TRÊN MÁY TÍNH */}
+        {/* KHỐI 1: Ổ ĐĨA & VỊ TRÍ LƯU TRỮ DỮ LIỆU CỤC BỘ / CLOUD SYNC */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-cyan-50 text-cyan-600">
                 <HardDrive className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-900">Ổ Đĩa &amp; Vị Trí Lưu Trữ Dữ Liệu</h2>
+                <h2 className="text-base font-bold text-slate-900">Vị Trí Lưu Trữ Dữ Liệu</h2>
                 <p className="text-xs text-slate-500">
-                  Lưu trữ trên máy tính theo yêu cầu (Không sử dụng Neon Cloud DB)
+                  Hỗ trợ đồng bộ đa máy tính qua OneDrive / Google Drive (Cách 2)
                 </p>
               </div>
             </div>
@@ -219,30 +267,105 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Trạng thái đồng bộ Cloud */}
+          {storageConfig?.isCloudSync ? (
+            <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
+              <Cloud className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <div className="font-bold flex items-center gap-1.5">
+                  <span>Đang đồng bộ đa máy qua OneDrive / Cloud Sync</span>
+                  <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded font-mono font-bold">
+                    Hoạt động
+                  </span>
+                </div>
+                <div className="text-[11px] text-emerald-700 mt-0.5">
+                  Khi bạn đăng nhập tài khoản trên máy tính khác (có cùng OneDrive/Google Drive), toàn bộ sách và dữ liệu thư viện sẽ tự động đồng bộ sang máy mới!
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+              <div className="flex items-start gap-2.5">
+                <HardDrive className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Đang lưu cục bộ trên ổ cứng máy này.</span>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    Để không mất dữ liệu khi sang máy khác (Cách 2), bạn nên đổi thư mục lưu sang OneDrive hoặc Google Drive.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSelectFolder}
+                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 cursor-pointer self-start sm:self-auto"
+              >
+                Đổi sang OneDrive
+              </button>
+            </div>
+          )}
+
           <div className="space-y-2 text-xs">
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-600">Thư mục gốc lưu trữ:</span>
-                <span className="font-mono font-bold text-slate-800">
+                <span className="font-mono font-bold text-slate-800 truncate max-w-[400px]">
                   {storageConfig?.dataDir || 'D:\\NamLibraryData (Mặc định)'}
                 </span>
               </div>
               {storageConfig?.activeDbPath && (
                 <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
                   <span className="font-semibold text-slate-600">File CSDL SQLite tài khoản này:</span>
-                  <span className="font-mono text-cyan-700 truncate max-w-[420px]" title={storageConfig.activeDbPath}>
+                  <span className="font-mono text-cyan-700 truncate max-w-[400px]" title={storageConfig.activeDbPath}>
                     {storageConfig.activeDbPath}
                   </span>
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-slate-400">
-              💡 Toàn bộ sách, bạn đọc, lịch sử mượn trả được lưu hoàn toàn trong tệp <code>library.db</code> bên trong thư mục người dùng trên ổ đĩa này, đảm bảo tính bảo mật và độc lập dữ liệu tuyệt đối.
-            </p>
           </div>
         </div>
 
-        {/* KHỐI 2: CÀI ĐẶT ÂM THANH THEO PLAN.MD */}
+        {/* KHỐI 2: SAO LƯU & KHÔI PHỤC DỮ LIỆU RA TỆP .DB (AN TOÀN TUYỆT ĐỐI) */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-violet-50 text-violet-600">
+                <Save className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Sao Lưu &amp; Khôi Phục Dữ Liệu Ra Tệp</h2>
+                <p className="text-xs text-slate-500">
+                  Xuất tệp sao lưu .db ra USB hoặc gửi sang máy tính khác
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportBackup}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 font-bold text-xs transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Xuất file sao lưu (.db)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleImportBackup}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Khôi phục từ file</span>
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-500">
+            💡 Bạn có thể bấm <strong>Xuất file sao lưu (.db)</strong> để cất vào USB hoặc gửi email cho chính mình. Sang máy tính mới, chỉ cần bấm <strong>Khôi phục từ file</strong> là toàn bộ sách và bạn đọc sẽ hiện ra nguyên vẹn.
+          </p>
+        </div>
+
+        {/* KHỐI 3: CÀI ĐẶT ÂM THANH THEO PLAN.MD */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -290,7 +413,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* KHỐI 3: QUY ĐỊNH MƯỢN TRẢ THEO PLAN.MD */}
+        {/* KHỐI 4: QUY ĐỊNH MƯỢN TRẢ THEO PLAN.MD */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
             <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
@@ -349,7 +472,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* KHỐI 4: CẤU HÌNH GỬI EMAIL TỰ ĐỘNG & RESEND API */}
+        {/* KHỐI 5: CẤU HÌNH GỬI EMAIL TỰ ĐỘNG & RESEND API */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -417,7 +540,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* KHỐI 5: XÓA SẠCH DỮ LIỆU CỦA TÀI KHOẢN NÀY */}
+        {/* KHỐI 6: XÓA SẠCH DỮ LIỆU CỦA TÀI KHOẢN NÀY */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">

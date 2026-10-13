@@ -236,10 +236,15 @@ export default function DesktopLoginPage({ onLoginSuccess }: DesktopLoginPagePro
           </div>
         </div>
 
-        {/* Local Storage Privacy Note */}
-        <div className="flex items-center gap-2.5 text-[11px] text-slate-400 justify-center">
-          <HardDrive className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>Dữ liệu lưu 100% trên máy tính. Không sử dụng Neon Cloud DB.</span>
+        {/* Local Storage Privacy Note & Cloud Sync Tip */}
+        <div className="space-y-1 text-center">
+          <div className="flex items-center gap-2 text-[11px] text-slate-400 justify-center">
+            <HardDrive className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Dữ liệu lưu trên máy tính (SQLite). Không sử dụng máy chủ đám mây Neon.</span>
+          </div>
+          <p className="text-[10px] text-slate-500">
+            ☁️ <strong>Đồng bộ đa máy:</strong> Chọn lưu tại thư mục <code>OneDrive</code> hoặc <code>Google Drive</code> để dữ liệu tự động đồng bộ khi sang máy tính khác.
+          </p>
         </div>
       </div>
     </div>

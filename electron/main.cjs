@@ -12,6 +12,114 @@ let currentUserId = 'default_user';
 // Cấu hình đường dẫn lưu trữ
 const configFile = path.join(app.getPath('userData'), 'storage-config.json');
 
+/**
+ * Tự động dò tìm các thư mục Cloud Sync phổ biến trên Windows
+ * (OneDrive, Google Drive, Dropbox) để hỗ trợ đồng bộ đa máy tính (Cách 2)
+ */
+function getDetectedCloudFolders() {
+  const list = [];
+  const userProfile = process.env.USERPROFILE || '';
+  const seenPaths = new Set();
+
+  // 1. Microsoft OneDrive (Cá nhân hoặc Doanh nghiệp/Trường học)
+  const oneDriveCandidates = [
+    process.env.OneDrive,
+    process.env.OneDriveConsumer,
+    process.env.OneDriveCommercial,
+    path.join(userProfile, 'OneDrive'),
+  ].filter(Boolean);
+
+  for (const od of oneDriveCandidates) {
+    try {
+      if (fs.existsSync(od) && !seenPaths.has(od.toLowerCase())) {
+        seenPaths.add(od.toLowerCase());
+        list.push({
+          id: 'onedrive',
+          name: 'Microsoft OneDrive',
+          baseDir: od,
+          path: path.join(od, 'NamLibraryData'),
+          label: `OneDrive (${path.join(od, 'NamLibraryData')})`,
+          isCloud: true,
+          isRecommended: true,
+          description: 'Khuyên dùng: Tự động đồng bộ dữ liệu sang máy tính khác khi đăng nhập cùng tài khoản OneDrive',
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // 2. Google Drive Desktop
+  const gDriveCandidates = [
+    'G:\\My Drive',
+    'G:\\',
+    path.join(userProfile, 'Google Drive'),
+    path.join(userProfile, 'Google Drive', 'My Drive'),
+  ];
+  for (const gd of gDriveCandidates) {
+    try {
+      if (fs.existsSync(gd) && !seenPaths.has(gd.toLowerCase())) {
+        seenPaths.add(gd.toLowerCase());
+        list.push({
+          id: 'gdrive',
+          name: 'Google Drive',
+          baseDir: gd,
+          path: path.join(gd, 'NamLibraryData'),
+          label: `Google Drive (${path.join(gd, 'NamLibraryData')})`,
+          isCloud: true,
+          isRecommended: true,
+          description: 'Khuyên dùng: Tự động đồng bộ dữ liệu sang máy tính khác qua Google Drive',
+        });
+        break;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // 3. Dropbox
+  const dropboxCandidates = [path.join(userProfile, 'Dropbox')];
+  for (const db of dropboxCandidates) {
+    try {
+      if (fs.existsSync(db) && !seenPaths.has(db.toLowerCase())) {
+        seenPaths.add(db.toLowerCase());
+        list.push({
+          id: 'dropbox',
+          name: 'Dropbox',
+          baseDir: db,
+          path: path.join(db, 'NamLibraryData'),
+          label: `Dropbox (${path.join(db, 'NamLibraryData')})`,
+          isCloud: true,
+          isRecommended: true,
+          description: 'Tự động đồng bộ dữ liệu sang máy tính khác qua Dropbox',
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  return list;
+}
+
+/**
+ * Kiểm tra xem thư mục hiện tại có nằm trong thư mục Cloud Sync không
+ */
+function isCloudSyncPath(dataDir) {
+  if (!dataDir) return false;
+  const clouds = getDetectedCloudFolders();
+  const lower = dataDir.toLowerCase();
+  return (
+    clouds.some((c) => lower.startsWith(c.baseDir.toLowerCase())) ||
+    lower.includes('onedrive') ||
+    lower.includes('google drive') ||
+    lower.includes('dropbox')
+  );
+}
+
+/**
+ * Quét các ổ đĩa cục bộ trên Windows (C:, D:, E:,...)
+ */
 function getAvailableDrives() {
   const drives = [];
   const letters = ['C', 'D', 'E', 'F', 'G', 'H', 'Z'];
@@ -22,7 +130,8 @@ function getAvailableDrives() {
         drives.push({
           letter: `${letter}:`,
           path: path.join(`${letter}:\\`, 'NamLibraryData'),
-          label: `Ổ đĩa ${letter}: (${letter}:\\NamLibraryData)`
+          label: `Ổ đĩa ${letter}: (${letter}:\\NamLibraryData)`,
+          isCloud: false,
         });
       }
     } catch (e) {
@@ -39,26 +148,33 @@ function getStorageConfig() {
       return {
         dataDir: data.dataDir,
         isConfigured: Boolean(data.isConfigured),
-        currentUserId: data.currentUserId || null
+        currentUserId: data.currentUserId || null,
       };
     }
   } catch (e) {
     console.error('Lỗi đọc cấu hình storage:', e);
   }
 
-  // Mặc định: Ưu tiên ổ D nếu có, không thì ổ C, hoặc thư mục userData
-  const drives = getAvailableDrives();
-  const dDrive = drives.find((d) => d.letter === 'D:');
-  const defaultDir = dDrive
-    ? dDrive.path
-    : drives[0]
-    ? drives[0].path
-    : path.join(app.getPath('userData'), 'NamLibraryData');
+  // Mặc định: Ưu tiên OneDrive nếu có (đồng bộ đa máy theo Cách 2)
+  const cloudFolders = getDetectedCloudFolders();
+  const localDrives = getAvailableDrives();
+
+  let defaultDir = '';
+  if (cloudFolders.length > 0) {
+    defaultDir = cloudFolders[0].path; // Ưu tiên OneDrive/Google Drive
+  } else {
+    const dDrive = localDrives.find((d) => d.letter === 'D:');
+    defaultDir = dDrive
+      ? dDrive.path
+      : localDrives[0]
+      ? localDrives[0].path
+      : path.join(app.getPath('userData'), 'NamLibraryData');
+  }
 
   return {
     dataDir: defaultDir,
     isConfigured: false,
-    currentUserId: null
+    currentUserId: null,
   };
 }
 
@@ -109,6 +225,12 @@ function switchUserDb(userId) {
       console.log(`[SQLite] Đã kết nối CSDL riêng biệt của [${safeUserId}] tại:`, dbPath);
 
       currentDb.serialize(() => {
+        // Tối ưu hóa SQLite cho Cloud Sync (OneDrive / Google Drive):
+        // Bật chế độ WAL (Write-Ahead Logging) và busy_timeout để tránh lỗi khóa tệp khi OneDrive đang sync
+        currentDb.run('PRAGMA journal_mode = WAL;');
+        currentDb.run('PRAGMA busy_timeout = 5000;');
+        currentDb.run('PRAGMA synchronous = NORMAL;');
+
         currentDb.run(`CREATE TABLE IF NOT EXISTS readers (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -168,9 +290,9 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
     },
-    icon: path.join(__dirname, '../public/logo-icon.svg')
+    icon: path.join(__dirname, '../public/logo-icon.svg'),
   });
 
   if (isDev) {
@@ -207,16 +329,19 @@ app.on('window-all-closed', () => {
   }
 });
 
-// IPC Handlers: Storage & Drives
+// IPC Handlers: Storage, Drives, Cloud Sync
 ipcMain.handle('storage:get-config', () => {
   const config = getStorageConfig();
   const drives = getAvailableDrives();
+  const cloudFolders = getDetectedCloudFolders();
   return {
     ...config,
     drives,
+    cloudFolders,
+    isCloudSync: isCloudSyncPath(config.dataDir),
     activeDbPath: currentDb
       ? path.join(config.dataDir, 'users', currentUserId, 'library.db')
-      : null
+      : null,
   };
 });
 
@@ -229,13 +354,17 @@ ipcMain.handle('storage:set-directory', async (event, newDir) => {
   if (currentUserId) {
     await switchUserDb(currentUserId);
   }
-  return { success: true, dataDir: newDir };
+  return {
+    success: true,
+    dataDir: newDir,
+    isCloudSync: isCloudSyncPath(newDir),
+  };
 });
 
 ipcMain.handle('storage:select-directory', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Chọn thư mục hoặc ổ đĩa để lưu trữ cơ sở dữ liệu',
-    properties: ['openDirectory', 'createDirectory']
+    properties: ['openDirectory', 'createDirectory'],
   });
 
   if (result.canceled || !result.filePaths.length) {
@@ -255,12 +384,17 @@ ipcMain.handle('storage:select-directory', async () => {
   return {
     success: true,
     dataDir: selectedPath,
-    activeDbPath: path.join(selectedPath, 'users', currentUserId, 'library.db')
+    isCloudSync: isCloudSyncPath(selectedPath),
+    activeDbPath: path.join(selectedPath, 'users', currentUserId, 'library.db'),
   };
 });
 
 ipcMain.handle('storage:get-drives', () => {
   return getAvailableDrives();
+});
+
+ipcMain.handle('storage:get-cloud-folders', () => {
+  return getDetectedCloudFolders();
 });
 
 ipcMain.handle('storage:open-folder', () => {
@@ -275,6 +409,91 @@ ipcMain.handle('storage:open-folder', () => {
     shell.openPath(config.dataDir);
   }
   return true;
+});
+
+// IPC Handlers: Backup Export & Import (An toàn dữ liệu tuyệt đối)
+ipcMain.handle('storage:export-backup', async () => {
+  if (!currentDb || !mainWindow) {
+    return { success: false, message: 'Cơ sở dữ liệu chưa sẵn sàng.' };
+  }
+
+  const config = getStorageConfig();
+  const safeUserId = (currentUserId || 'default_user').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const sourceDbPath = path.join(config.dataDir, 'users', safeUserId, 'library.db');
+
+  if (!fs.existsSync(sourceDbPath)) {
+    return { success: false, message: 'Tệp CSDL không tồn tại trên đĩa.' };
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const saveDialogResult = await dialog.showSaveDialog(mainWindow, {
+    title: 'Xuất tệp sao lưu dữ liệu thư viện',
+    defaultPath: `nam-library-backup-${safeUserId}-${todayStr}.db`,
+    filters: [
+      { name: 'Tệp sao lưu SQLite (.db)', extensions: ['db'] },
+      { name: 'Tất cả các tệp', extensions: ['*'] },
+    ],
+  });
+
+  if (saveDialogResult.canceled || !saveDialogResult.filePath) {
+    return { success: false, canceled: true };
+  }
+
+  try {
+    // Ép ghi toàn bộ nhật ký WAL vào file chính
+    await new Promise((resolve) => currentDb.run('PRAGMA wal_checkpoint(FULL);', resolve));
+    fs.copyFileSync(sourceDbPath, saveDialogResult.filePath);
+    return { success: true, filePath: saveDialogResult.filePath };
+  } catch (err) {
+    console.error('Lỗi xuất tệp sao lưu:', err);
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('storage:import-backup', async () => {
+  if (!mainWindow) return { success: false };
+
+  const openDialogResult = await dialog.showOpenDialog(mainWindow, {
+    title: 'Chọn tệp sao lưu để khôi phục dữ liệu',
+    filters: [
+      { name: 'Tệp sao lưu CSDL (.db, .sqlite, .namlib)', extensions: ['db', 'sqlite', 'namlib'] },
+      { name: 'Tất cả các tệp', extensions: ['*'] },
+    ],
+    properties: ['openFile'],
+  });
+
+  if (openDialogResult.canceled || !openDialogResult.filePaths.length) {
+    return { success: false, canceled: true };
+  }
+
+  const backupFilePath = openDialogResult.filePaths[0];
+  const config = getStorageConfig();
+  const safeUserId = (currentUserId || 'default_user').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const userDir = path.join(config.dataDir, 'users', safeUserId);
+  const targetDbPath = path.join(userDir, 'library.db');
+
+  try {
+    if (currentDb) {
+      try {
+        currentDb.close();
+      } catch (e) {}
+      currentDb = null;
+    }
+
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+
+    // Ghi đè file backup vào vị trí CSDL
+    fs.copyFileSync(backupFilePath, targetDbPath);
+
+    // Mở lại kết nối CSDL và khởi tạo
+    await switchUserDb(currentUserId);
+    return { success: true, targetDbPath };
+  } catch (err) {
+    console.error('Lỗi khôi phục tệp sao lưu:', err);
+    return { success: false, message: err.message };
+  }
 });
 
 // IPC Handlers: Shell
