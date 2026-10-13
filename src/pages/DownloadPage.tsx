@@ -23,19 +23,29 @@ import ClerkAuthSection from '../components/ClerkAuthSection';
 // CẤU HÌNH CÁC ĐƯỜNG DẪN TẢI XUỐNG VÀ DỰ PHÒNG CHO NAM LIBRARY
 // Bạn có thể chỉnh sửa link trực tiếp ở đây hoặc cấu hình qua biến môi trường (.env / Vercel):
 // =========================================================================
-const rawExeUrl = import.meta.env.VITE_DOWNLOAD_EXE_URL || '';
-const gDriveUrl =
-  import.meta.env.VITE_DOWNLOAD_GDRIVE_URL ||
-  'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing';
+const defaultReleaseExeUrl =
+  'https://github.com/namnn2016-ops/nam-library/releases/download/v1.0.0/nam-libary-Setup-1.0.0.exe';
 
 export const DOWNLOAD_CONFIG = {
-  // Luôn luôn trỏ trực tiếp đến link Google Drive để mở ra trang web tải file .exe (~123MB)
-  googleDriveUrl: gDriveUrl,
-  exeUrl: rawExeUrl.startsWith('http') ? rawExeUrl : gDriveUrl,
+  // 1. Link tải trực tiếp file Setup .exe (~123MB)
+  // Sử dụng link trực tiếp từ GitHub Releases giúp tải thẳng file .exe về máy,
+  // tương thích tốt với cả trình duyệt gốc lẫn phần mềm download (FDM, IDM).
+  exeUrl: import.meta.env.VITE_DOWNLOAD_EXE_URL || defaultReleaseExeUrl,
+
+  // 2. Link GitHub Releases chính thức
   githubReleasesUrl:
     import.meta.env.VITE_DOWNLOAD_GITHUB_URL ||
     'https://github.com/namnn2016-ops/nam-library/releases',
-  portableUrl: gDriveUrl,
+
+  // 3. Link Google Drive dự phòng
+  googleDriveUrl:
+    import.meta.env.VITE_DOWNLOAD_GDRIVE_URL ||
+    'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing',
+
+  // 4. Link bản nén Portable (.zip) không cần cài đặt
+  portableUrl:
+    import.meta.env.VITE_DOWNLOAD_PORTABLE_URL ||
+    'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing',
 };
 
 export default function DownloadPage() {
@@ -45,8 +55,12 @@ export default function DownloadPage() {
 
   const handleDownloadClick = () => {
     setDownloadStarted(true);
-    const downloadTarget = DOWNLOAD_CONFIG.googleDriveUrl;
-    window.open(downloadTarget, '_blank');
+    const link = document.createElement('a');
+    link.href = DOWNLOAD_CONFIG.exeUrl;
+    link.setAttribute('download', 'nam-libary-Setup-1.0.0.exe');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const copyShortcutText = (key: string) => {
@@ -105,15 +119,13 @@ export default function DownloadPage() {
               <span>Đăng Nhập / Lấy Mã Desktop</span>
             </a>
 
-            <a
-              href={DOWNLOAD_CONFIG.googleDriveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={handleDownloadClick}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>Tải EXE (Google Drive)</span>
-            </a>
+              <span>Tải EXE Ngay</span>
+            </button>
           </div>
         </div>
       </nav>
@@ -150,7 +162,7 @@ export default function DownloadPage() {
                   <div className="flex items-center gap-2.5">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 animate-pulse" />
                     <span>
-                      <strong className="text-white">Đang mở trang tải xuống Google Drive:</strong> Tab Google Drive đang được mở. Hãy nhấn nút <strong>"Tải xuống"</strong> (hoặc Download) trên Google Drive để tải file <code>nam-libary-Setup-1.0.0.exe (~123MB)</code> về máy!
+                      <strong className="text-white">Đang tải xuống bộ cài đặt:</strong> Tệp <code>nam-libary-Setup-1.0.0.exe (~123MB)</code> đang được tải về máy. Nếu quá trình tải chưa bắt đầu, bạn có thể <a href={DOWNLOAD_CONFIG.exeUrl} download="nam-libary-Setup-1.0.0.exe" className="underline font-bold text-white hover:text-cyan-300">bấm vào đây để tải lại</a> hoặc sử dụng link Google Drive dự phòng bên dưới!
                     </span>
                   </div>
                   <button
@@ -163,20 +175,17 @@ export default function DownloadPage() {
               )}
 
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                {/* Main Download Button: Direct Link to Google Drive */}
-                <a
-                  href={DOWNLOAD_CONFIG.googleDriveUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setDownloadStarted(true)}
-                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-3.5 px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-extrabold text-base shadow-xl shadow-indigo-600/35 hover:shadow-cyan-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer text-decoration-none"
+                {/* Main Download Button */}
+                <button
+                  onClick={handleDownloadClick}
+                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-3.5 px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-extrabold text-base shadow-xl shadow-indigo-600/35 hover:shadow-cyan-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 >
-                  <Download className="w-5 h-5 animate-bounce shrink-0" />
+                  <Download className="w-5 h-5 animate-bounce" />
                   <div className="text-left">
                     <div className="text-xs font-semibold text-indigo-100 uppercase tracking-wider">Tải về miễn phí</div>
-                    <div className="text-base">Mở Trang Tải Google Drive (.exe)</div>
+                    <div className="text-base">Tải Bản Windows (.exe)</div>
                   </div>
-                </a>
+                </button>
 
                 {/* Web Auth Link Button */}
                 <a
@@ -209,21 +218,30 @@ export default function DownloadPage() {
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs text-slate-400">
               <span className="font-semibold text-slate-400">Các đường dẫn dự phòng:</span>
               <a
-                href={DOWNLOAD_CONFIG.googleDriveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-emerald-400 underline underline-offset-4 flex items-center gap-1 text-emerald-300 font-semibold"
-              >
-                Google Drive Mirror (.exe)
-              </a>
-              <span>•</span>
-              <a
                 href={DOWNLOAD_CONFIG.githubReleasesUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="hover:text-indigo-400 underline underline-offset-4 flex items-center gap-1"
               >
                 GitHub Releases
+              </a>
+              <span>•</span>
+              <a
+                href={DOWNLOAD_CONFIG.googleDriveUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-emerald-400 underline underline-offset-4 flex items-center gap-1"
+              >
+                Google Drive Mirror
+              </a>
+              <span>•</span>
+              <a
+                href={DOWNLOAD_CONFIG.portableUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-cyan-400 underline underline-offset-4 flex items-center gap-1"
+              >
+                Bản nén Portable (.zip)
               </a>
             </div>
           </div>
