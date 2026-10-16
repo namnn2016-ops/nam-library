@@ -183,7 +183,14 @@ function App() {
           ) : (
             // ================= MÔI TRƯỜNG WEB (KHÔNG CÓ BẢN DÙNG THỬ) =================
             clerkKey ? (
-              <ClerkProvider publishableKey={clerkKey}>
+              <ClerkProvider
+                publishableKey={clerkKey}
+                appearance={{
+                  layout: {
+                    unsafe_disableDevelopmentModeWarnings: true,
+                  },
+                }}
+              >
                 {webRoutes}
               </ClerkProvider>
             ) : (

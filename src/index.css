@@ -90,3 +90,31 @@
 .animate-slideInRight {
   animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   ẨN TRIỆT ĐỂ HUY HIỆU & WATERMARK "DEVELOPMENT MODE" CỦA CLERK
+   ========================================================================== */
+.cl-development-badge,
+.cl-internal-b3fm6y,
+[data-localization-key="developmentMode"],
+[class*="developmentBadge"],
+[class*="cl-development-badge"],
+div:has(> [data-localization-key="developmentMode"]),
+span:has(> [data-localization-key="developmentMode"]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Ẩn watermark chân trang Clerk */
+.cl-watermark,
+.cl-internal-1dauvpw {
+  display: none !important;
+}
+
