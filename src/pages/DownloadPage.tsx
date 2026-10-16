@@ -117,15 +117,7 @@ export default function DownloadPage() {
             </div>
           </div>
 
-          {/* Nav Links */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#auth-section" className="hover:text-cyan-400 transition-colors font-bold text-indigo-300">Đăng Nhập Clerk</a>
-            <a href="#features" className="hover:text-indigo-400 transition-colors">Tính năng</a>
-            <a href="#installation" className="hover:text-indigo-400 transition-colors">Cài đặt</a>
-            <a href="#shortcuts" className="hover:text-indigo-400 transition-colors">Phím tắt</a>
-            <a href="#specs" className="hover:text-indigo-400 transition-colors">Cấu hình</a>
-            <a href="#faq" className="hover:text-indigo-400 transition-colors">FAQ</a>
-          </div>
+
 
           {/* Action CTAs: SignedOut & SignedIn */}
           <div className="flex items-center gap-3">
