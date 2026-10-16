@@ -17,6 +17,8 @@ import {
 import { useToast } from '../context/ToastContext';
 import type { AuthUser } from '../types';
 
+import LogoIcon from './LogoIcon';
+
 interface DesktopLoginPageProps {
   onLoginSuccess: (user: AuthUser) => void;
   onOpenStorageModal?: () => void;
@@ -27,12 +29,12 @@ export default function DesktopLoginPage({ onLoginSuccess, onOpenStorageModal }:
   const [tokenInput, setTokenInput] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Đường dẫn mở web đăng nhập
+  // Đường dẫn mở web đăng nhập: Mở trực tiếp trang chủ nơi người dùng xác thực và lấy mã
   const webAuthUrl =
     import.meta.env.VITE_WEB_AUTH_URL ||
     (typeof window !== 'undefined' && window.location.origin.includes('localhost')
-      ? 'http://localhost:5173/#/login'
-      : 'https://nam-library.vercel.app/#/login');
+      ? 'http://localhost:5173/'
+      : 'https://nam-library.vercel.app/');
 
   const handleOpenWeb = () => {
     if (window.electronAPI) {
@@ -119,7 +121,7 @@ export default function DesktopLoginPage({ onLoginSuccess, onOpenStorageModal }:
         {/* Brand & Header */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-800 border border-indigo-500/30 p-1 shadow-lg shadow-indigo-500/20 mx-auto">
-            <img src="/logo-icon.svg" alt="Logo" className="w-full h-full object-cover rounded-xl" />
+            <LogoIcon className="w-full h-full rounded-xl" />
           </div>
 
           <div>

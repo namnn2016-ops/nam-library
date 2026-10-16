@@ -305,7 +305,9 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    icon: path.join(__dirname, '../public/logo-icon.svg'),
+    icon: fs.existsSync(path.join(__dirname, '../public/logo-icon.svg'))
+      ? path.join(__dirname, '../public/logo-icon.svg')
+      : path.join(__dirname, '../dist/logo-icon.svg'),
   });
 
   mainWindow.once('ready-to-show', () => {

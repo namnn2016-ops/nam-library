@@ -12,6 +12,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import type { AuthUser } from '../types';
+import LogoIcon from './LogoIcon';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -46,7 +47,7 @@ export default function Sidebar({
       <div className="h-18 flex items-center px-4 border-b border-slate-800/80 justify-between">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-indigo-500/20 shrink-0 border border-indigo-500/30">
-            <img src="/logo-icon.svg" alt="Nam Library Logo" className="w-full h-full object-cover" />
+            <LogoIcon className="w-full h-full rounded-xl" />
           </div>
           {isOpen && (
             <div className="flex flex-col min-w-0 transition-opacity duration-200">

@@ -27,6 +27,7 @@ import {
   useClerk
 } from '@clerk/clerk-react';
 import { generateDesktopAuthToken } from '../services/auth';
+import LogoIcon from '../components/LogoIcon';
 
 /**
  * Giao diện khi người dùng đã đăng nhập Clerk thành công (SignedIn)
@@ -298,7 +299,9 @@ export default function WebLoginPage() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <img src="/logo-icon.svg" alt="Nam Library" className="w-6 h-6 rounded-lg" />
+          <div className="w-6 h-6 rounded-lg overflow-hidden shrink-0">
+            <LogoIcon className="w-full h-full rounded-lg" />
+          </div>
           <span className="font-extrabold text-sm text-white">
             Nam <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Library</span>
           </span>

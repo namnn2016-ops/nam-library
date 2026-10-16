@@ -70,6 +70,7 @@
       "dist/**/*",
       "!dist/downloads/**/*",
       "electron/**/*",
+      "public/**/*",
       "package.json"
     ]
   }

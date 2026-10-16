@@ -33,6 +33,44 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function() {
+        function removeClerkDevWatermarks() {
+          try {
+            const root = document.body || document.documentElement;
+            if (!root) return;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+            let node;
+            const toHide = [];
+            while ((node = walker.nextNode())) {
+              const text = node.nodeValue ? node.nodeValue.trim() : '';
+              if (text === 'Development mode' || text.indexOf('Secured by') !== -1) {
+                if (node.parentElement) {
+                  toHide.push(node.parentElement);
+                }
+              }
+            }
+            toHide.forEach(function(el) {
+              el.style.setProperty('display', 'none', 'important');
+              el.style.setProperty('visibility', 'hidden', 'important');
+              el.style.setProperty('opacity', '0', 'important');
+              el.style.setProperty('height', '0px', 'important');
+              if (el.parentElement && el.parentElement.tagName !== 'BODY' && el.parentElement.tagName !== 'HTML') {
+                if (el.parentElement.children.length <= 2) {
+                  el.parentElement.style.setProperty('display', 'none', 'important');
+                }
+              }
+            });
+          } catch (e) {}
+        }
+
+        setInterval(removeClerkDevWatermarks, 250);
+        if (window.MutationObserver) {
+          const observer = new MutationObserver(removeClerkDevWatermarks);
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

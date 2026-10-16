@@ -19,6 +19,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import ClerkAuthSection from '../components/ClerkAuthSection';
+import LogoIcon from '../components/LogoIcon';
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 
 // =========================================================================
@@ -100,7 +101,7 @@ export default function DownloadPage() {
           {/* Logo & Brand */}
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-lg shadow-indigo-500/25 border border-indigo-500/40 p-0.5 bg-slate-900">
-              <img src="/logo-icon.svg" alt="Nam Library Logo" className="w-full h-full object-cover rounded-xl" />
+              <LogoIcon className="w-full h-full rounded-xl" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -287,7 +288,9 @@ export default function DownloadPage() {
                   <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
-                  <img src="/logo-icon.svg" alt="" className="w-3.5 h-3.5" />
+                  <div className="w-3.5 h-3.5 shrink-0">
+                    <LogoIcon className="w-full h-full" />
+                  </div>
                   <span>nam-libary v1.0.0.exe</span>
                 </div>
                 <div className="w-12" />
@@ -711,7 +714,7 @@ export default function DownloadPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl overflow-hidden border border-indigo-500/30">
-              <img src="/logo-icon.svg" alt="" className="w-full h-full object-cover" />
+              <LogoIcon className="w-full h-full" />
             </div>
             <div>
               <span className="font-bold text-slate-200">Nam Library</span>
