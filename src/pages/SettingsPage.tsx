@@ -21,6 +21,7 @@ import {
 import { dbService } from '../services/db';
 import { playSuccessBeep, playErrorBeep } from '../services/audio';
 import { useToast } from '../context/ToastContext';
+import ClerkUserAvatar from '../components/ClerkUserAvatar';
 import {
   getStoredDesktopUser,
   logoutDesktopUser
@@ -202,13 +203,14 @@ export default function SettingsPage() {
           <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold text-base flex items-center justify-center shrink-0 overflow-hidden shadow-md shadow-indigo-600/20">
-                  {currentUser.avatar ? (
-                    <img src={currentUser.avatar} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    currentUser.name.charAt(0).toUpperCase()
-                  )}
-                </div>
+                <ClerkUserAvatar
+                  avatarUrl={currentUser.avatar}
+                  name={currentUser.name}
+                  email={currentUser.email}
+                  id={currentUser.id}
+                  size={48}
+                  className="shadow-md shadow-indigo-600/20 shrink-0"
+                />
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-bold text-slate-900">{currentUser.name}</h2>

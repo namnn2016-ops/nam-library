@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { AuthUser } from '../types';
 import LogoIcon from './LogoIcon';
+import ClerkUserButton from './ClerkUserButton';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -124,39 +125,16 @@ export default function Sidebar({
         )}
       </nav>
 
-      {/* User account card & Logout at bottom */}
+      {/* Clerk User Button with Popover matching image copy 5 */}
       {user && (
         <div className="p-3 border-t border-slate-800/80">
-          <div
-            className={`p-2.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center gap-3 ${
-              !isOpen && 'justify-center p-2'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">
-              {user.avatar ? (
-                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-              ) : (
-                user.name.charAt(0).toUpperCase()
-              )}
-            </div>
-
-            {isOpen && (
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-white truncate">{user.name}</div>
-                <div className="text-[10px] text-slate-400 truncate">{user.email || 'SQLite Cục Bộ'}</div>
-              </div>
-            )}
-
-            {isOpen && onLogout && (
-              <button
-                onClick={onLogout}
-                title="Đăng xuất"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700/60 transition-colors cursor-pointer"
-              >
-                <LogOut size={16} />
-              </button>
-            )}
-          </div>
+          <ClerkUserButton
+            user={user}
+            isOpen={isOpen}
+            onLogout={onLogout}
+            onOpenStorageModal={onOpenStorageModal}
+            placement="bottom-sidebar"
+          />
         </div>
       )}
 

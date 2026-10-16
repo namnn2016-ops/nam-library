@@ -3,6 +3,7 @@ import { Volume2, VolumeX, ShieldCheck, Clock, LogOut, HardDrive } from 'lucide-
 import { dbService } from '../services/db';
 import { playSuccessBeep } from '../services/audio';
 import type { AuthUser } from '../types';
+import ClerkUserAvatar from './ClerkUserAvatar';
 
 interface HeaderProps {
   user?: AuthUser | null;
@@ -109,13 +110,14 @@ export default function Header({ user, onLogout }: HeaderProps) {
         {user ? (
           <div className="flex items-center gap-2 pl-1 border-l border-slate-200">
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 overflow-hidden">
-                {user.avatar ? (
-                  <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  user.name.charAt(0).toUpperCase()
-                )}
-              </div>
+              <ClerkUserAvatar
+                avatarUrl={user.avatar}
+                name={user.name}
+                email={user.email}
+                id={user.id}
+                size={26}
+                className="shrink-0"
+              />
               <div className="flex flex-col text-left">
                 <span className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[120px]">
                   {user.name}
