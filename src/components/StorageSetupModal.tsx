@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { HardDrive, FolderOpen, CheckCircle2, ShieldCheck, Sparkles, Cloud, ArrowRight } from 'lucide-react';
 import type { DriveInfo, CloudFolderInfo, StorageConfig } from '../types/electron';
 
@@ -79,7 +80,7 @@ export default function StorageSetupModal({
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fadeIn">
       <div className="bg-white rounded-3xl max-w-xl w-full p-7 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto">
         {/* Header */}
@@ -248,6 +249,7 @@ export default function StorageSetupModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
