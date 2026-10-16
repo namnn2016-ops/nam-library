@@ -56,7 +56,7 @@ function MainLayout({ user, onLogout, onOpenStorageModal }: MainLayoutProps) {
   }, [showToast]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+    <div className="flex h-screen w-screen h-full w-full overflow-hidden bg-slate-900 font-sans text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
       {/* Sidebar thu vào mở ra */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -105,14 +105,8 @@ function App() {
         });
       }
 
-      // Kiểm tra nếu chưa chọn ổ đĩa lần đầu -> Hiển thị hộp thoại chọn ổ đĩa ngay
-      window.electronAPI.getStorageConfig().then((config) => {
-        if (!config.isConfigured) {
-          setShowStorageModal(true);
-        }
-      }).catch((err) => {
-        console.error('Lỗi đọc cấu hình ổ đĩa:', err);
-      });
+      // Hệ thống đã tự động cấu hình đường dẫn lưu trữ tối ưu (OneDrive / Ổ C: / Ổ D:)
+      // Không tự động bật popup giữa màn hình gây phiền người dùng.
     }
   }, [isElectron, desktopUser]);
 
@@ -123,14 +117,6 @@ function App() {
 
   const handleLoginSuccess = (user: AuthUser) => {
     setDesktopUser(user);
-    // Sau khi đăng nhập, kiểm tra ổ đĩa
-    if (window.electronAPI) {
-      window.electronAPI.getStorageConfig().then((config) => {
-        if (!config.isConfigured) {
-          setShowStorageModal(true);
-        }
-      });
-    }
   };
 
   const clerkKey = getClerkPublishableKey();

@@ -140,10 +140,10 @@ export default function ClerkUserButton({
         </button>
       )}
 
-      {/* Popover Card mô phỏng chuẩn xác User Profile Popover của Clerk trong image copy 5 */}
+      {/* Popover Card mô phỏng chuẩn xác User Profile Popover của Clerk trong image copy 5 với tông màu tối đồng bộ Sidebar */}
       {showPopover && (
         <div
-          className={`absolute z-50 w-72 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200/90 p-4 space-y-3.5 animate-fadeIn backdrop-blur-md ${
+          className={`absolute z-50 w-72 rounded-2xl bg-slate-900/95 text-slate-100 shadow-2xl border border-slate-700/80 p-4 space-y-3.5 animate-fadeIn backdrop-blur-xl ${
             placement === 'bottom-sidebar'
               ? isOpen
                 ? 'bottom-full left-0 mb-2.5'
@@ -152,24 +152,24 @@ export default function ClerkUserButton({
           }`}
         >
           {/* Header Popover: Avatar lớn, Họ tên, Username/Email */}
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
             <ClerkUserAvatar
               avatarUrl={user.avatar}
               name={user.name}
               email={user.email}
               id={user.id}
-              size={48}
-              className="ring-2 ring-indigo-500/30 shadow-md shrink-0"
+              size={46}
+              className="ring-2 ring-indigo-500/40 shadow-md shrink-0"
             />
             <div className="flex-1 min-w-0">
-              <div className="font-extrabold text-sm text-slate-900 leading-snug truncate">
+              <div className="font-extrabold text-sm text-white leading-snug truncate">
                 {user.name}
               </div>
-              <div className="text-xs text-slate-500 font-mono truncate leading-tight">
+              <div className="text-xs text-slate-400 font-mono truncate leading-tight">
                 {user.email || 'namnn2016'}
               </div>
-              <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[10px] border border-emerald-200">
-                <ShieldCheck size={11} className="text-emerald-600" />
+              <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold text-[10px] border border-emerald-500/20">
+                <ShieldCheck size={11} className="text-emerald-400" />
                 <span>Tài khoản Clerk</span>
               </div>
             </div>
@@ -181,13 +181,13 @@ export default function ClerkUserButton({
             <button
               type="button"
               onClick={handleManageAccount}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 transition-colors cursor-pointer text-left group"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer text-left group"
             >
               <div className="flex items-center gap-2.5">
-                <Settings size={16} className="text-slate-500 group-hover:text-indigo-600 transition-colors" />
+                <Settings size={16} className="text-slate-400 group-hover:text-indigo-400 transition-colors" />
                 <span>Manage account</span>
               </div>
-              <ExternalLink size={13} className="text-slate-400 group-hover:text-indigo-500" />
+              <ExternalLink size={13} className="text-slate-500 group-hover:text-indigo-400" />
             </button>
 
             {/* Storage setup nếu đang trong app */}
@@ -195,13 +195,13 @@ export default function ClerkUserButton({
               <button
                 type="button"
                 onClick={handleStorageClick}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 transition-colors cursor-pointer text-left group"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer text-left group"
               >
                 <div className="flex items-center gap-2.5">
-                  <HardDrive size={16} className="text-slate-500 group-hover:text-cyan-600 transition-colors" />
+                  <HardDrive size={16} className="text-slate-400 group-hover:text-cyan-400 transition-colors" />
                   <span>Ổ đĩa lưu trữ (SQLite)</span>
                 </div>
-                <span className="text-[10px] text-cyan-600 font-bold bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">
+                <span className="text-[10px] text-cyan-400 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-500/30">
                   Dữ liệu riêng
                 </span>
               </button>
@@ -212,9 +212,9 @@ export default function ClerkUserButton({
               <button
                 type="button"
                 onClick={handleSignOutClick}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer text-left group"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer text-left group"
               >
-                <LogOut size={16} className="text-rose-500 group-hover:scale-110 transition-transform" />
+                <LogOut size={16} className="text-rose-400 group-hover:scale-110 transition-transform" />
                 <span>Sign out</span>
               </button>
             )}
