@@ -96,6 +96,17 @@ function App() {
   const [desktopUser, setDesktopUser] = useState<AuthUser | null>(() => getStoredDesktopUser());
   const [showStorageModal, setShowStorageModal] = useState(false);
 
+  // Gắn class electron-env để quản lý cuộn chính xác giữa Web và Desktop
+  useEffect(() => {
+    if (isElectron) {
+      document.documentElement.classList.add('electron-env');
+      document.body.classList.add('electron-env');
+    } else {
+      document.documentElement.classList.remove('electron-env');
+      document.body.classList.remove('electron-env');
+    }
+  }, [isElectron]);
+
   // Khởi tạo CSDL SQLite riêng cho user khi mở ứng dụng Desktop
   useEffect(() => {
     if (isElectron && window.electronAPI) {

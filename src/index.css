@@ -40,13 +40,25 @@
     border-color: hsl(var(--border));
   }
   html,
-  body,
-  #root {
-    height: 100%;
+  body {
+    min-height: 100%;
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  #root {
+    min-height: 100%;
+    width: 100%;
+  }
+
+  /* Khóa cuộn body khi chạy ứng dụng Desktop Electron để dùng thanh cuộn nội bộ */
+  body.electron-env,
+  html.electron-env {
+    height: 100% !important;
+    overflow: hidden !important;
   }
 
   body {
