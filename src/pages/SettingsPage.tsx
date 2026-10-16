@@ -16,10 +16,7 @@ import {
   Download,
   Upload,
   ShieldCheck,
-  Lock,
-  CheckCircle2,
-  XCircle,
-  RefreshCw
+  Lock
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep, playErrorBeep } from '../services/audio';

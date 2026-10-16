@@ -17,6 +17,7 @@ import { dbService } from './services/db';
 import { getStoredDesktopUser, logoutDesktopUser } from './services/auth';
 import { getClerkPublishableKey } from './services/clerkConfig';
 import { ClerkProvider } from '@clerk/clerk-react';
+import ErrorBoundary from './components/ErrorBoundary';
 import type { AuthUser } from './types';
 
 interface MainLayoutProps {
@@ -132,56 +133,66 @@ function App() {
     }
   };
 
-  return (
-    <ToastProvider>
-      <Router>
-        {isElectron ? (
-          // ================= MÔI TRƯỜNG ELECTRON DESKTOP =================
-          <>
-            {!desktopUser ? (
-              <DesktopLoginPage
-                onLoginSuccess={handleLoginSuccess}
-                onOpenStorageModal={() => setShowStorageModal(true)}
-              />
-            ) : (
-              <MainLayout
-                user={desktopUser}
-                onLogout={handleLogout}
-                onOpenStorageModal={() => setShowStorageModal(true)}
-              />
-            )}
-            <StorageSetupModal
-              isOpen={showStorageModal}
-              onClose={() => setShowStorageModal(false)}
-              onSaved={() => setShowStorageModal(false)}
-            />
-          </>
-        ) : (
-          // ================= MÔI TRƯỜNG WEB (KHÔNG CÓ BẢN DÙNG THỬ) =================
-          <ClerkProvider
-            publishableKey={getClerkPublishableKey()}
-          >
-            <Routes>
-              {/* Trang chủ & Cổng xác thực Clerk / Tải ứng dụng Desktop */}
-              <Route path="/" element={<DownloadPage />} />
-              <Route path="/download" element={<DownloadPage />} />
-              <Route path="/login/*" element={<WebLoginPage />} />
-              <Route path="/auth/*" element={<WebLoginPage />} />
-              <Route path="/sign-in/*" element={<WebLoginPage />} />
-              <Route path="/sign-up/*" element={<WebLoginPage />} />
+  const clerkKey = getClerkPublishableKey();
 
-              {/* Chặn tất cả các route dùng thử trên Web */}
-              <Route path="/app" element={<WebRestrictedPage />} />
-              <Route path="/borrow" element={<WebRestrictedPage />} />
-              <Route path="/readers" element={<WebRestrictedPage />} />
-              <Route path="/books" element={<WebRestrictedPage />} />
-              <Route path="/settings" element={<WebRestrictedPage />} />
-              <Route path="*" element={<WebRestrictedPage />} />
-            </Routes>
-          </ClerkProvider>
-        )}
-      </Router>
-    </ToastProvider>
+  const webRoutes = (
+    <Routes>
+      {/* Trang chủ & Cổng xác thực Clerk / Tải ứng dụng Desktop */}
+      <Route path="/" element={<DownloadPage />} />
+      <Route path="/download" element={<DownloadPage />} />
+      <Route path="/login/*" element={<WebLoginPage />} />
+      <Route path="/auth/*" element={<WebLoginPage />} />
+      <Route path="/sign-in/*" element={<WebLoginPage />} />
+      <Route path="/sign-up/*" element={<WebLoginPage />} />
+
+      {/* Chặn tất cả các route dùng thử trên Web */}
+      <Route path="/app" element={<WebRestrictedPage />} />
+      <Route path="/borrow" element={<WebRestrictedPage />} />
+      <Route path="/readers" element={<WebRestrictedPage />} />
+      <Route path="/books" element={<WebRestrictedPage />} />
+      <Route path="/settings" element={<WebRestrictedPage />} />
+      <Route path="*" element={<WebRestrictedPage />} />
+    </Routes>
+  );
+
+  return (
+    <ErrorBoundary>
+      <ToastProvider>
+        <Router>
+          {isElectron ? (
+            // ================= MÔI TRƯỜNG ELECTRON DESKTOP =================
+            <>
+              {!desktopUser ? (
+                <DesktopLoginPage
+                  onLoginSuccess={handleLoginSuccess}
+                  onOpenStorageModal={() => setShowStorageModal(true)}
+                />
+              ) : (
+                <MainLayout
+                  user={desktopUser}
+                  onLogout={handleLogout}
+                  onOpenStorageModal={() => setShowStorageModal(true)}
+                />
+              )}
+              <StorageSetupModal
+                isOpen={showStorageModal}
+                onClose={() => setShowStorageModal(false)}
+                onSaved={() => setShowStorageModal(false)}
+              />
+            </>
+          ) : (
+            // ================= MÔI TRƯỜNG WEB (KHÔNG CÓ BẢN DÙNG THỬ) =================
+            clerkKey ? (
+              <ClerkProvider publishableKey={clerkKey}>
+                {webRoutes}
+              </ClerkProvider>
+            ) : (
+              webRoutes
+            )
+          )}
+        </Router>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 

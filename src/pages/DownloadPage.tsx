@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Download,
   Sparkles,
@@ -118,7 +119,7 @@ export default function DownloadPage() {
 
           {/* Nav Links */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#/login" className="hover:text-cyan-400 transition-colors font-bold text-indigo-300">Đăng Nhập Clerk</a>
+            <a href="#auth-section" className="hover:text-cyan-400 transition-colors font-bold text-indigo-300">Đăng Nhập Clerk</a>
             <a href="#features" className="hover:text-indigo-400 transition-colors">Tính năng</a>
             <a href="#installation" className="hover:text-indigo-400 transition-colors">Cài đặt</a>
             <a href="#shortcuts" className="hover:text-indigo-400 transition-colors">Phím tắt</a>
@@ -129,29 +130,29 @@ export default function DownloadPage() {
           {/* Action CTAs: SignedOut & SignedIn */}
           <div className="flex items-center gap-3">
             <SignedOut>
-              <a
-                href="#/sign-in"
+              <Link
+                to="/sign-in"
                 className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/80 transition-all shadow-xs"
               >
                 <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Đăng Nhập</span>
-              </a>
-              <a
-                href="#/sign-up"
+              </Link>
+              <Link
+                to="/sign-up"
                 className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/30 transition-all"
               >
                 <span>Đăng Ký</span>
-              </a>
+              </Link>
             </SignedOut>
 
             <SignedIn>
-              <a
-                href="#/login"
+              <Link
+                to="/login"
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 transition-all"
               >
                 <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Mã Desktop Của Bạn</span>
-              </a>
+              </Link>
               <UserButton
                 appearance={{
                   elements: {
@@ -231,7 +232,7 @@ export default function DownloadPage() {
 
                 {/* Web Auth Link Button */}
                 <a
-                  href="#/login"
+                  href="#auth-section"
                   className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700/80 text-white font-bold text-sm border border-slate-700 transition-all hover:-translate-y-0.5"
                 >
                   <KeyRound className="w-4 h-4 text-cyan-400" />
@@ -727,7 +728,7 @@ export default function DownloadPage() {
           </div>
 
           <div className="flex items-center gap-6">
-            <a href="#/login" className="hover:text-indigo-400 transition-colors">Đăng Nhập Clerk</a>
+            <a href="#auth-section" className="hover:text-indigo-400 transition-colors">Đăng Nhập Clerk</a>
             <a href="#download-section" className="hover:text-cyan-400 transition-colors">Tải File EXE</a>
             <a href="#faq" className="hover:text-slate-300 transition-colors">Trợ Giúp</a>
           </div>

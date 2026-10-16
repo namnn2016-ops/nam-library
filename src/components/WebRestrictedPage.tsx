@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ShieldAlert, Download, KeyRound, Monitor, HardDrive, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, Download, Monitor, HardDrive, ArrowLeft } from 'lucide-react';
 
 export default function WebRestrictedPage() {
   return (

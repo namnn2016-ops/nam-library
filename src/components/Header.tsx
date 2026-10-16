@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Volume2, VolumeX, ShieldCheck, Clock, LogOut, HardDrive, User } from 'lucide-react';
+import { Volume2, VolumeX, ShieldCheck, Clock, LogOut, HardDrive } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep } from '../services/audio';
 import type { AuthUser } from '../types';
