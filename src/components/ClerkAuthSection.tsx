@@ -231,9 +231,27 @@ function ClerkSignedOutView() {
       <div className="flex justify-center">
         <div className="w-full max-w-md flex justify-center">
           {authTab === 'signin' ? (
-            <SignIn routing="virtual" />
+            <SignIn
+              routing="virtual"
+              appearance={{
+                elements: {
+                  footer: { display: 'none' },
+                  footerAction: { display: 'none' },
+                  footerPages: { display: 'none' },
+                },
+              }}
+            />
           ) : (
-            <SignUp routing="virtual" />
+            <SignUp
+              routing="virtual"
+              appearance={{
+                elements: {
+                  footer: { display: 'none' },
+                  footerAction: { display: 'none' },
+                  footerPages: { display: 'none' },
+                },
+              }}
+            />
           )}
         </div>
       </div>

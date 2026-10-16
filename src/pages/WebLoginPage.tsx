@@ -246,9 +246,27 @@ function SignedOutContent({ defaultMode }: { defaultMode: 'signin' | 'signup' })
       {/* Khung nhúng Clerk Component chuẩn: SignIn / SignUp */}
       <div className="w-full flex justify-center">
         {authMode === 'signup' ? (
-          <SignUp routing="virtual" />
+          <SignUp
+            routing="virtual"
+            appearance={{
+              elements: {
+                footer: { display: 'none' },
+                footerAction: { display: 'none' },
+                footerPages: { display: 'none' },
+              },
+            }}
+          />
         ) : (
-          <SignIn routing="virtual" />
+          <SignIn
+            routing="virtual"
+            appearance={{
+              elements: {
+                footer: { display: 'none' },
+                footerAction: { display: 'none' },
+                footerPages: { display: 'none' },
+              },
+            }}
+          />
         )}
       </div>
     </div>

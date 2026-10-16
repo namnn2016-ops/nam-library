@@ -189,6 +189,12 @@ function App() {
                   layout: {
                     unsafe_disableDevelopmentModeWarnings: true,
                   },
+                  elements: {
+                    footer: { display: 'none' },
+                    footerAction: { display: 'none' },
+                    footerPages: { display: 'none' },
+                    userButtonPopoverFooter: { display: 'none' },
+                  },
                 }}
               >
                 {webRoutes}

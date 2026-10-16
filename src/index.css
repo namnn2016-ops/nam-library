@@ -92,15 +92,30 @@
 }
 
 /* ==========================================================================
-   ẨN TRIỆT ĐỂ HUY HIỆU & WATERMARK "DEVELOPMENT MODE" CỦA CLERK
+   ẨN TRIỆT ĐỂ FOOTER, "SECURED BY CLERK" & "DEVELOPMENT MODE" CỦA CLERK
    ========================================================================== */
-.cl-development-badge,
+.cl-footer,
+.cl-footerAction,
+.cl-footerPages,
+.cl-footerItem,
+.cl-footerPagesLink,
+.cl-userButtonPopoverFooter,
+[class*="cl-footer"],
+[class*="footerAction"],
+[class*="cl-footerAction"],
+[class*="cl-internal-b3fm6y"],
 .cl-internal-b3fm6y,
+.cl-internal-1dauvpw,
+.cl-internal-phcr6e,
+.cl-development-badge,
 [data-localization-key="developmentMode"],
 [class*="developmentBadge"],
 [class*="cl-development-badge"],
-div:has(> [data-localization-key="developmentMode"]),
-span:has(> [data-localization-key="developmentMode"]) {
+a[href*="clerk.com"],
+a[href*="clerk.dev"],
+div:has(> a[href*="clerk.com"]),
+span:has(> a[href*="clerk.com"]),
+p:has(> a[href*="clerk.com"]) {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -112,9 +127,10 @@ span:has(> [data-localization-key="developmentMode"]) {
   overflow: hidden !important;
 }
 
-/* Ẩn watermark chân trang Clerk */
+/* Ẩn watermark và branding chân trang Clerk */
 .cl-watermark,
 .cl-internal-1dauvpw {
   display: none !important;
 }
+
 
