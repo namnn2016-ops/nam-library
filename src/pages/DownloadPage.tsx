@@ -18,6 +18,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import ClerkAuthSection from '../components/ClerkAuthSection';
+import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 
 // =========================================================================
 // CẤU HÌNH CÁC ĐƯỜNG DẪN TẢI XUỐNG VÀ DỰ PHÒNG CHO NAM LIBRARY
@@ -41,11 +42,6 @@ export const DOWNLOAD_CONFIG = {
   googleDriveUrl:
     import.meta.env.VITE_DOWNLOAD_GDRIVE_URL ||
     'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing',
-
-  // 4. Link bản nén Portable (.zip) không cần cài đặt
-  portableUrl:
-    import.meta.env.VITE_DOWNLOAD_PORTABLE_URL ||
-    'https://drive.google.com/file/d/1Xk0iEaP2ZKdKSYuWyeNmLsC1XQV3Ll_a/view?usp=sharing',
 };
 
 export default function DownloadPage() {
@@ -55,12 +51,33 @@ export default function DownloadPage() {
 
   const handleDownloadClick = () => {
     setDownloadStarted(true);
-    const link = document.createElement('a');
-    link.href = DOWNLOAD_CONFIG.exeUrl;
-    link.setAttribute('download', 'nam-libary-Setup-1.0.0.exe');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    // Kỹ thuật tải trực tiếp ngầm: Kích hoạt trình duyệt tải thẳng file .exe về máy
+    // TUYỆT ĐỐI KHÔNG mở tab mới, KHÔNG chuyển hướng trang, KHÔNG hiện trang web GitHub
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = DOWNLOAD_CONFIG.exeUrl;
+      document.body.appendChild(iframe);
+
+      setTimeout(() => {
+        try {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        } catch {
+          // ignore
+        }
+      }, 60000);
+    } catch {
+      // Fallback nếu iframe bị chặn
+      const link = document.createElement('a');
+      link.href = DOWNLOAD_CONFIG.exeUrl;
+      link.setAttribute('download', 'nam-libary-Setup-1.0.0.exe');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const copyShortcutText = (key: string) => {
@@ -109,15 +126,40 @@ export default function DownloadPage() {
             <a href="#faq" className="hover:text-indigo-400 transition-colors">FAQ</a>
           </div>
 
-          {/* Action CTAs */}
+          {/* Action CTAs: SignedOut & SignedIn */}
           <div className="flex items-center gap-3">
-            <a
-              href="#/login"
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/80 transition-all shadow-xs"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Đăng Nhập / Lấy Mã Desktop</span>
-            </a>
+            <SignedOut>
+              <a
+                href="#/sign-in"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/80 transition-all shadow-xs"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Đăng Nhập</span>
+              </a>
+              <a
+                href="#/sign-up"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/30 transition-all"
+              >
+                <span>Đăng Ký</span>
+              </a>
+            </SignedOut>
+
+            <SignedIn>
+              <a
+                href="#/login"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 transition-all"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Mã Desktop Của Bạn</span>
+              </a>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: 'w-9 h-9 rounded-xl ring-2 ring-indigo-500/30',
+                  },
+                }}
+              />
+            </SignedIn>
 
             <button
               onClick={handleDownloadClick}
@@ -233,15 +275,6 @@ export default function DownloadPage() {
                 className="hover:text-emerald-400 underline underline-offset-4 flex items-center gap-1"
               >
                 Google Drive Mirror
-              </a>
-              <span>•</span>
-              <a
-                href={DOWNLOAD_CONFIG.portableUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-cyan-400 underline underline-offset-4 flex items-center gap-1"
-              >
-                Bản nén Portable (.zip)
               </a>
             </div>
           </div>

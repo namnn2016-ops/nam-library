@@ -68,6 +68,7 @@
     },
     "files": [
       "dist/**/*",
+      "!dist/downloads/**/*",
       "electron/**/*",
       "package.json"
     ]

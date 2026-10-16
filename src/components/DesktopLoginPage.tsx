@@ -4,7 +4,6 @@ import {
   ExternalLink,
   ClipboardPaste,
   ArrowRight,
-  ShieldCheck,
   Sparkles,
   UserCheck,
   HardDrive

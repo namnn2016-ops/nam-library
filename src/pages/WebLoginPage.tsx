@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   KeyRound,
   Copy,
@@ -10,10 +10,8 @@ import {
   ArrowLeft,
   Download,
   HardDrive,
-  AlertTriangle,
-  ExternalLink,
-  Lock,
-  ArrowRight
+  LogIn,
+  UserPlus
 } from 'lucide-react';
 import {
   ClerkLoaded,
@@ -22,34 +20,41 @@ import {
   SignIn,
   SignUp,
   UserButton,
+  SignedIn,
+  SignedOut,
   useUser,
+  useAuth,
   useClerk
 } from '@clerk/clerk-react';
 import { generateDesktopAuthToken } from '../services/auth';
 
-function WebLoginLoadedContent() {
+/**
+ * Giao diện khi người dùng đã đăng nhập Clerk thành công (SignedIn)
+ * Sử dụng đúng hook chuẩn: useUser(), useAuth(), useClerk()
+ */
+function SignedInContent() {
   const { user } = useUser();
+  const { userId } = useAuth();
   const { signOut } = useClerk();
   const [authToken, setAuthToken] = useState<string>('');
   const [copied, setCopied] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
 
   useEffect(() => {
     if (user) {
       const code = generateDesktopAuthToken({
-        id: user.id,
+        id: user.id || userId || '',
         name: user.fullName || user.firstName || 'Thủ Thư',
         email: user.primaryEmailAddress?.emailAddress || '',
         avatar: user.imageUrl,
       });
       setAuthToken(code);
     }
-  }, [user]);
+  }, [user, userId]);
 
   const handleRegenerate = () => {
     if (user) {
       const code = generateDesktopAuthToken({
-        id: user.id,
+        id: user.id || userId || '',
         name: user.fullName || user.firstName || 'Thủ Thư',
         email: user.primaryEmailAddress?.emailAddress || '',
         avatar: user.imageUrl,
@@ -60,61 +65,17 @@ function WebLoginLoadedContent() {
   };
 
   const handleCopy = () => {
+    if (!authToken) return;
     navigator.clipboard.writeText(authToken);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
 
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center space-y-6 animate-fadeIn">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold">
-            <KeyRound className="w-3.5 h-3.5" />
-            <span>Xác Thực Chính Thức Bằng Clerk</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Đăng Nhập Tài Khoản
-          </h1>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Đăng nhập bằng tài khoản Clerk của bạn để nhận chuỗi ký tự xác thực ngẫu nhiên kích hoạt ứng dụng Desktop.
-          </p>
-        </div>
+  if (!user) return null;
 
-        {/* Khung nhúng Clerk SignIn/SignUp chính thức */}
-        <div className="w-full flex justify-center">
-          {showSignUp ? (
-            <div className="w-full flex flex-col items-center space-y-3">
-              <SignUp routing="hash" />
-              <button
-                type="button"
-                onClick={() => setShowSignUp(false)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-4 cursor-pointer"
-              >
-                Đã có tài khoản? Đăng nhập tại đây
-              </button>
-            </div>
-          ) : (
-            <div className="w-full flex flex-col items-center space-y-3">
-              <SignIn routing="hash" />
-              <button
-                type="button"
-                onClick={() => setShowSignUp(true)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-4 cursor-pointer"
-              >
-                Chưa có tài khoản? Đăng ký tài khoản mới
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Khi đã đăng nhập
   return (
-    <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border border-indigo-500/40 shadow-2xl space-y-6 backdrop-blur-xl animate-fadeIn">
-      {/* User Profile Bar */}
+    <div className="w-full max-w-xl p-8 sm:p-10 rounded-3xl bg-slate-900/90 border border-indigo-500/40 shadow-2xl space-y-6 backdrop-blur-xl animate-fadeIn">
+      {/* Thanh thông tin người dùng với UserButton chuẩn của Clerk */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-5">
         <div className="flex items-center gap-3.5">
           <UserButton
@@ -135,7 +96,7 @@ function WebLoginLoadedContent() {
               </span>
             </div>
             <p className="text-xs text-slate-400 font-mono">
-              {user.primaryEmailAddress?.emailAddress || user.id}
+              {user.primaryEmailAddress?.emailAddress || userId}
             </p>
           </div>
         </div>
@@ -149,12 +110,12 @@ function WebLoginLoadedContent() {
         </button>
       </div>
 
-      {/* Generated Random Auth String Box */}
+      {/* Chuỗi ký tự ngẫu nhiên kích hoạt Desktop */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-cyan-400" />
-            Chuỗi ký tự ngẫu nhiên đăng nhập Desktop (Auth Code):
+            Chuỗi ký tự ngẫu nhiên đăng nhập Desktop:
           </label>
           <button
             type="button"
@@ -166,7 +127,7 @@ function WebLoginLoadedContent() {
           </button>
         </div>
 
-        {/* Code display with copy button */}
+        {/* Khung hiển thị mã và nút sao chép */}
         <div className="p-4 rounded-2xl bg-slate-950 border border-indigo-500/30 font-mono text-xs text-indigo-300 break-all select-all relative group flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <span className="font-bold text-white tracking-wide pr-2">{authToken}</span>
 
@@ -195,24 +156,24 @@ function WebLoginLoadedContent() {
 
         <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-semibold px-1">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>Mã xác thực được ký bảo mật bằng Clerk Secret Key (Chống giả mạo)</span>
+          <span>Mã xác thực được bảo mật và liên kết trực tiếp với tài khoản Clerk của bạn</span>
         </div>
       </div>
 
-      {/* Guide Steps */}
+      {/* 3 Bước hướng dẫn kích hoạt Desktop */}
       <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-300 space-y-2">
         <div className="font-bold text-white flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>3 Bước đơn giản để hoàn tất đăng nhập trên Desktop:</span>
+          <span>3 Bước hoàn tất đăng nhập trên ứng dụng Desktop:</span>
         </div>
         <ol className="list-decimal list-inside space-y-1.5 text-slate-400 text-[11px] leading-relaxed">
-          <li>Mở ứng dụng <strong>Nam Library</strong> đã cài trên máy tính Windows.</li>
+          <li>Mở phần mềm <strong>Nam Library</strong> đã cài trên máy tính Windows.</li>
           <li>Dán chuỗi ký tự trên vào ô <strong>"Dán chuỗi ký tự xác thực"</strong> trên ứng dụng.</li>
-          <li>Bấm <strong>"Xác nhận &amp; Đăng nhập"</strong>. Toàn bộ sách và dữ liệu được nạp vào máy!</li>
+          <li>Bấm <strong>"Xác nhận &amp; Đăng nhập"</strong> để mở toàn bộ tính năng quản lý thư viện!</li>
         </ol>
       </div>
 
-      {/* Bottom Actions */}
+      {/* Nút tải Desktop */}
       <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
         <Link
           to="/download"
@@ -225,97 +186,82 @@ function WebLoginLoadedContent() {
 
       <div className="flex items-center gap-2 text-[11px] text-slate-400 justify-center">
         <HardDrive className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-        <span>Dữ liệu lưu an toàn trên ổ đĩa máy tính (SQLite) • Tách biệt hoàn toàn</span>
+        <span>Dữ liệu lưu độc lập trên ổ đĩa máy tính (SQLite) • An toàn tuyệt đối</span>
       </div>
     </div>
   );
 }
 
-// Fallback UI khi Clerk tải chậm hoặc lỗi key
-function WebLoginFallbackContent({ onRetry }: { onRetry: () => void }) {
-  const [demoCode, setDemoCode] = useState<string | null>(null);
-
-  const handleQuickDemo = (name: string, id: string, email: string) => {
-    const code = generateDesktopAuthToken({ id, name, email });
-    setDemoCode(code);
-  };
+/**
+ * Giao diện khi người dùng chưa đăng nhập (SignedOut)
+ * Render đúng component chính thức của Clerk: <SignIn /> hoặc <SignUp />
+ */
+function SignedOutContent({ defaultMode }: { defaultMode: 'signin' | 'signup' }) {
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>(defaultMode);
 
   return (
-    <div className="w-full max-w-xl bg-slate-900/90 border border-amber-500/30 rounded-3xl p-8 space-y-6 backdrop-blur-xl animate-fadeIn">
-      <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs">
-        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-        <div>
-          <h2 className="font-bold text-amber-100 text-sm">Hệ Thống Clerk Phản Hồi Chậm Hoặc Cần Cấu Hình Key</h2>
-          <p className="text-slate-300 text-xs mt-1 leading-relaxed">
-            Hệ thống không nhận được phản hồi từ Clerk trong 4 giây. Bạn có thể dán Publishable Key &amp; Secret Key của bạn từ Clerk Dashboard hoặc dùng tính năng đăng nhập nhanh dưới đây:
-          </p>
+    <div className="w-full flex flex-col items-center space-y-6 animate-fadeIn">
+      {/* Tiêu đề & Giới thiệu */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold">
+          <KeyRound className="w-3.5 h-3.5" />
+          <span>Cổng Xác Thực Chính Thức Clerk</span>
         </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          {authMode === 'signup' ? 'Đăng Ký Tài Khoản Mới' : 'Đăng Nhập Tài Khoản'}
+        </h1>
+        <p className="text-xs text-slate-400 max-w-md mx-auto">
+          Sử dụng tài khoản Clerk của bạn để lấy mã ngẫu nhiên đăng nhập phần mềm quản lý thư viện Desktop.
+        </p>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Tab chuyển đổi rõ ràng giữa Đăng nhập và Đăng ký */}
+      <div className="inline-flex p-1 rounded-2xl bg-slate-900 border border-slate-800">
         <button
           type="button"
-          onClick={onRetry}
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-md flex items-center gap-2"
+          onClick={() => setAuthMode('signin')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            authMode === 'signin'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Thử lại kết nối Clerk</span>
+          <LogIn className="w-3.5 h-3.5" />
+          <span>Đăng Nhập</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setAuthMode('signup')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            authMode === 'signup'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <UserPlus className="w-3.5 h-3.5" />
+          <span>Đăng Ký</span>
         </button>
       </div>
 
-      {/* Đăng nhập nhanh */}
-      <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800 space-y-3 text-xs">
-        <span className="font-bold text-slate-300 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          Tạo mã đăng nhập nhanh (Dự phòng khẩn cấp):
-        </span>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => handleQuickDemo('Quản Thư Chính', 'user_librarian_main', 'librarian@namlibrary.vn')}
-            className="p-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-indigo-500/60 text-left cursor-pointer"
-          >
-            <div className="font-bold text-slate-200">Quản Thư Chính</div>
-            <div className="text-[10px] text-slate-500">user_librarian_main</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickDemo('Thủ Thư Cơ Sở', 'user_librarian_branch', 'branch@namlibrary.vn')}
-            className="p-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/60 text-left cursor-pointer"
-          >
-            <div className="font-bold text-slate-200">Thủ Thư Cơ Sở</div>
-            <div className="text-[10px] text-slate-500">user_librarian_branch</div>
-          </button>
-        </div>
-
-        {demoCode && (
-          <div className="p-3 rounded-xl bg-slate-900 border border-indigo-500/40 font-mono text-[11px] text-cyan-300 break-all select-all">
-            <span className="text-white font-bold block mb-1">Mã xác thực tạo thành công:</span>
-            {demoCode}
-          </div>
+      {/* Khung nhúng Clerk Component chuẩn: SignIn / SignUp */}
+      <div className="w-full flex justify-center">
+        {authMode === 'signup' ? (
+          <SignUp routing="virtual" />
+        ) : (
+          <SignIn routing="virtual" />
         )}
       </div>
     </div>
   );
 }
 
+/**
+ * Trang Web Đăng Nhập / Đăng Ký Clerk chính thức
+ * Hỗ trợ các route /sign-in, /sign-up, /login, /auth
+ */
 export default function WebLoginPage() {
-  const [timedOut, setTimedOut] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    setTimedOut(false);
-    const timer = setTimeout(() => {
-      setTimedOut(true);
-    }, 4000);
-
-    return () => clearTimeout(timer);
-  }, [reloadKey]);
-
-  const handleRetry = () => {
-    setTimedOut(false);
-    setReloadKey((k) => k + 1);
-  };
+  const location = useLocation();
+  const isSignUpRoute = location.pathname.includes('/sign-up');
 
   return (
     <div className="min-h-screen w-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-x-hidden font-sans selection:bg-indigo-500 selection:text-white">
@@ -341,24 +287,41 @@ export default function WebLoginPage() {
         </div>
       </div>
 
-      <div key={reloadKey} className="w-full max-w-xl relative z-10 flex justify-center">
+      {/* Container nội dung với ClerkLoaded, ClerkLoading, ClerkFailed chuẩn */}
+      <div className="w-full max-w-xl relative z-10 flex justify-center">
         <ClerkLoaded>
-          <WebLoginLoadedContent />
+          <SignedIn>
+            <SignedInContent />
+          </SignedIn>
+          <SignedOut>
+            <SignedOutContent defaultMode={isSignUpRoute ? 'signup' : 'signin'} />
+          </SignedOut>
         </ClerkLoaded>
 
         <ClerkLoading>
-          {!timedOut ? (
-            <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-4">
-              <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs text-slate-400">Đang tải trang đăng nhập Clerk...</p>
-            </div>
-          ) : (
-            <WebLoginFallbackContent onRetry={handleRetry} />
-          )}
+          <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-4">
+            <div className="w-9 h-9 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-medium text-slate-400">Đang khởi tạo hệ thống xác thực Clerk...</p>
+          </div>
         </ClerkLoading>
 
         <ClerkFailed>
-          <WebLoginFallbackContent onRetry={handleRetry} />
+          <div className="p-8 rounded-3xl bg-slate-900 border border-rose-500/40 text-center space-y-4 max-w-md">
+            <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto font-bold text-lg">
+              !
+            </div>
+            <h3 className="font-bold text-white text-base">Không thể kết nối với Clerk</h3>
+            <p className="text-xs text-slate-400">
+              Vui lòng kiểm tra lại kết nối mạng hoặc thử tải lại trang.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors cursor-pointer"
+            >
+              Tải lại trang
+            </button>
+          </div>
         </ClerkFailed>
       </div>
     </div>
