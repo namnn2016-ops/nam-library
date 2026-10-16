@@ -159,10 +159,7 @@ function App() {
         ) : (
           // ================= MÔI TRƯỜNG WEB (KHÔNG CÓ BẢN DÙNG THỬ) =================
           <ClerkProvider
-            publishableKey={
-              getClerkPublishableKey() ||
-              'pk_live_Y2xlcmsubmFtLWxpYnJhcnkudmVyY2VsLmFwcCQ'
-            }
+            publishableKey={getClerkPublishableKey()}
           >
             <Routes>
               {/* Trang chủ & Cổng xác thực Clerk / Tải ứng dụng Desktop */}

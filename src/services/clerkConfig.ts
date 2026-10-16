@@ -1,7 +1,6 @@
-// Cấu hình Clerk API Keys: Lấy trực tiếp từ file .env theo yêu cầu
+// Cấu hình Clerk API Keys: Lấy trực tiếp từ file .env (VITE_CLERK_PUBLISHABLE_KEY)
 export const CLERK_PUBLISHABLE_KEY =
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
-  'pk_live_Y2xlcmsubmFtLWxpYnJhcnkudmVyY2VsLmFwcCQ';
+  (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim();
 
 /**
  * Lấy Publishable Key trực tiếp từ biến môi trường .env
