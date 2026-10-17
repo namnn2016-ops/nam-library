@@ -8,7 +8,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   HardDrive,
-  LogOut,
   Sparkles
 } from 'lucide-react';
 import type { AuthUser } from '../types';

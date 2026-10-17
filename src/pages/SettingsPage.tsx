@@ -38,13 +38,24 @@ export default function SettingsPage() {
     borrow_days: 14,
     max_books_per_reader: 3,
     auto_email_enabled: true,
+    resend_api_key: '',
+    resend_from_email: 'onboarding@resend.dev',
   });
 
   const [saving, setSaving] = useState(false);
-  const envApiKey = import.meta.env.VITE_RESEND_API_KEY || '';
-  const envFromEmail = import.meta.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-  const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
+  const [emailStatus, setEmailStatus] = useState<{
+    isConfigured: boolean;
+    fromEmail: string;
+    maskedKey: string;
+    hasEnvKey: boolean;
+  }>({
+    isConfigured: false,
+    fromEmail: 'onboarding@resend.dev',
+    maskedKey: '',
+    hasEnvKey: false,
+  });
 
+  const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
   useEffect(() => {
     const user = getStoredDesktopUser();
@@ -58,6 +69,11 @@ export default function SettingsPage() {
         if (window.electronAPI) {
           const sConf = await window.electronAPI.getStorageConfig();
           setStorageConfig(sConf);
+
+          if (window.electronAPI.getEmailStatus) {
+            const eStat = await window.electronAPI.getEmailStatus(current.resend_api_key);
+            setEmailStatus(eStat);
+          }
         }
       } catch (err) {
         console.error('Lỗi đọc cài đặt:', err);
@@ -542,29 +558,67 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="space-y-3 text-xs">
+          <div className="space-y-4 text-xs">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-700 flex items-center gap-2">
                   <Key className="w-4 h-4 text-slate-400" />
                   Trạng thái cấu hình Resend API Key:
                 </span>
-                {envApiKey ? (
+                {settings.resend_api_key ? (
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Đã cấu hình trong .env ({envApiKey.substring(0, 5)}***)
+                    Đã lưu trong Cài đặt ({settings.resend_api_key.substring(0, 5)}***)
+                  </span>
+                ) : emailStatus.isConfigured ? (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Đã nhận từ file .env ({emailStatus.maskedKey})
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                     <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    Chưa cấu hình API Key trong .env
+                    Chưa cấu hình API Key (Không gửi email)
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-slate-600 border-t border-slate-200/60 pt-2">
-                <span>Email người gửi (From Address):</span>
-                <span className="font-mono font-semibold text-slate-800">{envFromEmail}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200/60 pt-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Khóa Resend API Key tùy chỉnh (Lưu an toàn trong SQLite):
+                  </label>
+                  <input
+                    type="password"
+                    value={settings.resend_api_key || ''}
+                    onChange={(e) => setSettings({ ...settings, resend_api_key: e.target.value })}
+                    placeholder={
+                      emailStatus.hasEnvKey
+                        ? `Đang dùng mặc định từ .env (${emailStatus.maskedKey})`
+                        : 're_...'
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-mono text-xs outline-none focus:border-indigo-600"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Nếu để trống, ứng dụng sẽ tự động nạp từ file <code>.env</code> trên máy tính (bảo mật, không lộ trên Web).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Email người gửi (From Address):
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.resend_from_email || ''}
+                    onChange={(e) => setSettings({ ...settings, resend_from_email: e.target.value })}
+                    placeholder={emailStatus.fromEmail || 'onboarding@resend.dev'}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-mono text-xs outline-none focus:border-indigo-600"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Mặc định của Resend dùng thử: <code>onboarding@resend.dev</code>
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center justify-between text-slate-600 border-t border-slate-200/60 pt-2">
@@ -573,7 +627,7 @@ export default function SettingsPage() {
                   Quy trình thông báo tự động:
                 </span>
                 <span className="text-slate-700 font-medium">
-                  Chạy nền định kỳ mỗi 2 phút &amp; gửi tối đa 1 lần/ngày/bạn đọc
+                  Chạy nền định kỳ mỗi 2 phút &amp; gửi tối đa 1 email/ngày/bạn đọc (gộp tất cả sách)
                 </span>
               </div>
             </div>

@@ -25,7 +25,7 @@ import {
 import { dbService } from '../services/db';
 import { sendOverdueNotificationEmail } from '../services/email';
 import { useToast } from '../context/ToastContext';
-import type { OverdueReaderInfo, BorrowRecord } from '../types';
+import type { OverdueReaderInfo, BorrowRecord, EmailBookItem } from '../types';
 
 export default function Dashboard() {
   const { showToast } = useToast();
@@ -42,15 +42,18 @@ export default function Dashboard() {
   const [borrowDays, setBorrowDays] = useState(14);
   const [emailStatus, setEmailStatus] = useState<{ [readerId: string]: string }>({});
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [emailedToday, setEmailedToday] = useState<Set<string>>(new Set());
 
   const loadData = async () => {
     try {
-      const [data, settings] = await Promise.all([
+      const [data, settings, emailedList] = await Promise.all([
         dbService.getDashboardStats(),
         dbService.getSettings(),
+        dbService.getReadersEmailedToday(),
       ]);
       setStats(data);
       setBorrowDays(settings.borrow_days || 14);
+      setEmailedToday(new Set(emailedList));
     } catch (err) {
       console.error('Lỗi tải dashboard:', err);
     }
@@ -65,14 +68,25 @@ export default function Dashboard() {
 
   const handleSendReminder = async (item: OverdueReaderInfo) => {
     setSendingEmail(item.reader.id);
-    const titles = item.overdue_books.map((b) => b.book_title);
-    const earliestDueDate = item.overdue_books[0]?.due_date || 'hôm nay';
+
+    // Chuyển danh sách sách quá hạn kèm chính xác ngày đến hạn của từng cuốn
+    const books: EmailBookItem[] = item.overdue_books.map((b) => ({
+      title: b.book_title || b.book_id,
+      dueDate: b.due_date,
+      daysDiff: b.days_overdue,
+    }));
+
+    const settings = await dbService.getSettings();
 
     const res = await sendOverdueNotificationEmail(
       item.reader.name,
       item.reader.email || '',
-      titles,
-      earliestDueDate
+      books,
+      undefined,
+      {
+        apiKey: settings.resend_api_key,
+        fromEmail: settings.resend_from_email,
+      }
     );
 
     setEmailStatus((prev) => ({
@@ -82,6 +96,14 @@ export default function Dashboard() {
     setSendingEmail(null);
 
     if (res.success) {
+      // Ghi nhận vào lịch sử CSDL để luồng tự động không gửi lặp lại trong ngày
+      await dbService.recordEmailSent(
+        item.reader.id,
+        item.reader.email || '',
+        'OVERDUE',
+        books.map((b) => b.title).join(', ')
+      );
+      setEmailedToday((prev) => new Set(prev).add(item.reader.id.toUpperCase()));
       showToast(`Đã gửi email nhắc quá hạn đến ${item.reader.name}!`, 'success');
     } else {
       showToast(res.message || 'Lỗi gửi email nhắc nhở', 'error');
@@ -282,7 +304,12 @@ export default function Dashboard() {
 
                 <div className="pt-2 border-t border-rose-100 flex items-center justify-between gap-2">
                   <div className="text-[11px] text-slate-500">
-                    {emailStatus[item.reader.id] ? (
+                    {emailedToday.has(item.reader.id.toUpperCase()) ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        Đã gửi nhắc hôm nay (Tối đa 1 email/ngày)
+                      </span>
+                    ) : emailStatus[item.reader.id] ? (
                       <span className="text-indigo-600 font-medium">
                         {emailStatus[item.reader.id]}
                       </span>
@@ -293,10 +320,20 @@ export default function Dashboard() {
                   <button
                     onClick={() => handleSendReminder(item)}
                     disabled={sendingEmail === item.reader.id}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-colors shrink-0 shadow-xs disabled:opacity-50"
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 shadow-xs cursor-pointer disabled:opacity-50 ${
+                      emailedToday.has(item.reader.id.toUpperCase())
+                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                        : 'bg-rose-600 text-white hover:bg-rose-700'
+                    }`}
                   >
                     <Mail className="w-3.5 h-3.5" />
-                    <span>{sendingEmail === item.reader.id ? 'Đang gửi...' : 'Gửi email nhắc'}</span>
+                    <span>
+                      {sendingEmail === item.reader.id
+                        ? 'Đang gửi...'
+                        : emailedToday.has(item.reader.id.toUpperCase())
+                        ? 'Gửi lại email'
+                        : 'Gửi email nhắc'}
+                    </span>
                   </button>
                 </div>
               </div>

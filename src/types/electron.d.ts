@@ -41,6 +41,19 @@ export interface ElectronAPI {
   exportBackup: () => Promise<{ success: boolean; filePath?: string; canceled?: boolean; message?: string }>;
   importBackup: () => Promise<{ success: boolean; targetDbPath?: string; canceled?: boolean; message?: string }>;
   openExternal: (url: string) => Promise<boolean>;
+  sendEmail: (payload: {
+    to: string | string[];
+    subject: string;
+    html: string;
+    apiKey?: string;
+    fromEmail?: string;
+  }) => Promise<{ success: boolean; message: string }>;
+  getEmailStatus: (customKey?: string) => Promise<{
+    isConfigured: boolean;
+    fromEmail: string;
+    maskedKey: string;
+    hasEnvKey: boolean;
+  }>;
 }
 
 declare global {

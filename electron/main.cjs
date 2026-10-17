@@ -5,6 +5,39 @@ const sqlite3 = require('sqlite3').verbose();
 
 const isDev = process.env.NODE_ENV === 'development';
 
+// Đọc cấu hình bảo mật từ file .env trong môi trường Node.js Electron (không rò rỉ vào bundle Web)
+function loadEnvFile() {
+  const envCandidates = [
+    path.join(process.cwd(), '.env'),
+    path.join(__dirname, '..', '.env'),
+    path.join(app.getPath('userData'), '.env'),
+  ];
+  for (const envPath of envCandidates) {
+    if (fs.existsSync(envPath)) {
+      try {
+        const content = fs.readFileSync(envPath, 'utf8');
+        content.split(/\r?\n/).forEach((line) => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const idx = trimmed.indexOf('=');
+            if (idx > 0) {
+              const k = trimmed.slice(0, idx).trim();
+              const v = trimmed.slice(idx + 1).trim();
+              if (!process.env[k]) {
+                process.env[k] = v;
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Lỗi nạp .env trong Electron:', e);
+      }
+      break;
+    }
+  }
+}
+loadEnvFile();
+
 let mainWindow;
 let currentDb = null;
 let currentUserId = 'default_user';
@@ -532,6 +565,71 @@ ipcMain.handle('storage:import-backup', async () => {
     console.error('Lỗi khôi phục tệp sao lưu:', err);
     return { success: false, message: err.message };
   }
+});
+
+// IPC Handlers: Resend Email Service (Gửi trực tiếp từ Node.js Electron - Không để lộ API Key trên Web)
+ipcMain.handle('email:send', async (event, { to, subject, html, apiKey, fromEmail }) => {
+  const activeKey = (apiKey || process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY || '').trim();
+  const activeFrom = (fromEmail || process.env.RESEND_FROM_EMAIL || process.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev').trim();
+
+  if (!activeKey) {
+    return {
+      success: false,
+      message: 'Chưa cấu hình Resend API Key! Vui lòng thiết lập API Key trong Cài đặt hoặc file .env trên máy.',
+    };
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${activeKey}`,
+      },
+      body: JSON.stringify({
+        from: activeFrom,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        message: errData.message || `Lỗi Resend HTTP ${response.status}`,
+      };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    return {
+      success: true,
+      message: `Đã gửi email thành công qua Resend! (ID: ${data.id || 'ok'})`,
+    };
+  } catch (err) {
+    console.error('Lỗi khi gửi email qua Electron Main:', err);
+    return {
+      success: false,
+      message: `Lỗi kết nối khi gửi email: ${err.message || 'Lỗi mạng'}`,
+    };
+  }
+});
+
+ipcMain.handle('email:get-status', async (event, customApiKey) => {
+  const activeKey = (customApiKey || process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY || '').trim();
+  const activeFrom = (process.env.RESEND_FROM_EMAIL || process.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev').trim();
+  const isConfigured = Boolean(activeKey && activeKey.length > 0);
+  const maskedKey = isConfigured
+    ? `${activeKey.substring(0, 5)}***${activeKey.substring(Math.max(0, activeKey.length - 3))}`
+    : '';
+
+  return {
+    isConfigured,
+    fromEmail: activeFrom,
+    maskedKey,
+    hasEnvKey: Boolean(process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY),
+  };
 });
 
 // IPC Handlers: Shell

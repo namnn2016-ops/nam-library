@@ -34,6 +34,14 @@ export interface AppSettings {
   borrow_days: number;
   max_books_per_reader: number; // 0 hoặc rỗng = Vô hạn
   auto_email_enabled?: boolean; // Tự động gửi email khi gần quá hạn hoặc quá hạn
+  resend_api_key?: string; // Khóa API tùy chỉnh (Lưu trong SQLite an toàn trên máy)
+  resend_from_email?: string; // Địa chỉ email gửi (Mặc định onboarding@resend.dev)
+}
+
+export interface EmailBookItem {
+  title: string;
+  dueDate: string;
+  daysDiff?: number; // Quá hạn (nếu âm hoặc số dương biểu thị số ngày quá hạn) hoặc số ngày còn lại
 }
 
 export interface OverdueReaderInfo {

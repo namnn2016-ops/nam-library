@@ -1,4 +1,4 @@
-import type { Book, Reader, BorrowRecord, AppSettings, OverdueReaderInfo } from '../types';
+import type { Book, Reader, BorrowRecord, AppSettings, OverdueReaderInfo, EmailBookItem } from '../types';
 import { sendOverdueNotificationEmail, sendNearDueNotificationEmail } from './email';
 import { getStoredDesktopUser } from './auth';
 
@@ -7,6 +7,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   borrow_days: 14,
   max_books_per_reader: 3,
   auto_email_enabled: true,
+  resend_api_key: '',
+  resend_from_email: 'onboarding@resend.dev',
 };
 
 // Kiểm tra môi trường Electron
@@ -60,6 +62,8 @@ export const dbService = {
         borrow_days: parseInt(map['borrow_days'] || map['max_borrow_days'] || '14', 10),
         max_books_per_reader: parseInt(map['max_books_per_reader'] || '3', 10),
         auto_email_enabled: map['auto_email_enabled'] !== 'false',
+        resend_api_key: map['resend_api_key'] || '',
+        resend_from_email: map['resend_from_email'] || 'onboarding@resend.dev',
       };
     } catch (err) {
       console.warn('Lỗi đọc settings SQLite, dùng mặc định:', err);
@@ -84,6 +88,13 @@ export const dbService = {
         ['max_books_per_reader', String(updated.max_books_per_reader)],
         ['auto_email_enabled', String(updated.auto_email_enabled ?? true)],
       ];
+
+      if (updated.resend_api_key !== undefined) {
+        pairs.push(['resend_api_key', updated.resend_api_key.trim()]);
+      }
+      if (updated.resend_from_email !== undefined) {
+        pairs.push(['resend_from_email', updated.resend_from_email.trim()]);
+      }
 
       for (const [key, val] of pairs) {
         await window.electronAPI!.dbRun(
@@ -829,6 +840,86 @@ export const dbService = {
     };
   },
 
+  // ==================== LỊCH SỬ & QUẢN LÝ GỬI EMAIL ====================
+  async hasReaderReceivedEmailToday(readerId: string, dateStr?: string): Promise<boolean> {
+    const today = dateStr || new Date().toISOString().split('T')[0];
+    const cleanId = readerId.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const logs = getLocalData<Array<{ reader_id: string; sent_date: string }>>('email_notifications', []);
+      return logs.some((l) => l.reader_id.toUpperCase() === cleanId && l.sent_date === today);
+    }
+
+    try {
+      const rows = await window.electronAPI!.dbQuery<{ id: number }>(
+        `SELECT id FROM email_notifications
+         WHERE UPPER(reader_id) = UPPER(?) AND sent_date = ?
+         LIMIT 1`,
+        [cleanId, today]
+      );
+      return rows.length > 0;
+    } catch (err) {
+      console.error('Lỗi kiểm tra lịch sử gửi email:', err);
+      return false;
+    }
+  },
+
+  async getReadersEmailedToday(dateStr?: string): Promise<string[]> {
+    const today = dateStr || new Date().toISOString().split('T')[0];
+
+    if (!isElectron()) {
+      const logs = getLocalData<Array<{ reader_id: string; sent_date: string }>>('email_notifications', []);
+      return Array.from(new Set(logs.filter((l) => l.sent_date === today).map((l) => l.reader_id.toUpperCase())));
+    }
+
+    try {
+      const rows = await window.electronAPI!.dbQuery<{ reader_id: string }>(
+        `SELECT DISTINCT UPPER(reader_id) as reader_id FROM email_notifications WHERE sent_date = ?`,
+        [today]
+      );
+      return rows.map((r) => r.reader_id);
+    } catch (err) {
+      console.error('Lỗi lấy danh sách độc giả đã gửi mail hôm nay:', err);
+      return [];
+    }
+  },
+
+  async recordEmailSent(
+    readerId: string,
+    readerEmail: string,
+    emailType: 'OVERDUE' | 'NEAR_DUE',
+    bookIdOrTitle?: string,
+    dateStr?: string
+  ): Promise<void> {
+    const today = dateStr || new Date().toISOString().split('T')[0];
+    const cleanId = readerId.trim().toUpperCase();
+
+    if (!isElectron()) {
+      const logs = getLocalData<
+        Array<{ reader_id: string; reader_email: string; email_type: string; book_id: string; sent_date: string }>
+      >('email_notifications', []);
+      logs.push({
+        reader_id: cleanId,
+        reader_email: readerEmail,
+        email_type: emailType,
+        book_id: bookIdOrTitle || 'CONSOLIDATED',
+        sent_date: today,
+      });
+      setLocalData('email_notifications', logs);
+      return;
+    }
+
+    try {
+      await window.electronAPI!.dbRun(
+        `INSERT INTO email_notifications (record_id, reader_id, reader_email, book_id, email_type, sent_date)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [null, cleanId, readerEmail, bookIdOrTitle || 'CONSOLIDATED', emailType, today]
+      );
+    } catch (err) {
+      console.error('Lỗi lưu lịch sử gửi email:', err);
+    }
+  },
+
   // ==================== TỰ ĐỘNG GỬI EMAIL ====================
   async checkAndSendAutoEmails(): Promise<string[]> {
     try {
@@ -843,72 +934,101 @@ export const dbService = {
       const readers = await this.getReaders();
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
+      const todayTime = new Date(todayStr).getTime();
       const notificationsSent: string[] = [];
 
+      // Nhóm tất cả các sách đang mượn theo từng độc giả (reader_id)
+      const readerBorrowsMap = new Map<string, BorrowRecord[]>();
       for (const b of activeBorrows) {
         if (!b.due_date) continue;
+        const rid = b.reader_id.toUpperCase();
+        if (!readerBorrowsMap.has(rid)) {
+          readerBorrowsMap.set(rid, []);
+        }
+        readerBorrowsMap.get(rid)!.push(b);
+      }
 
-        const reader = readers.find((r) => r.id.toUpperCase() === b.reader_id.toUpperCase());
+      for (const [cleanReaderId, readerBorrows] of readerBorrowsMap.entries()) {
+        const reader = readers.find((r) => r.id.toUpperCase() === cleanReaderId);
         if (!reader || !reader.email) continue;
 
-        const dueDateTime = new Date(b.due_date).getTime();
-        const todayTime = new Date(todayStr).getTime();
-        const diffDays = Math.round((dueDateTime - todayTime) / (1000 * 3600 * 24));
-
-        let emailType: 'OVERDUE' | 'NEAR_DUE' | null = null;
-        if (diffDays < 0) {
-          emailType = 'OVERDUE';
-        } else if (diffDays <= 2) {
-          emailType = 'NEAR_DUE';
+        // KIỂM TRA QUY ĐỊNH: Tối đa 1 email/ngày cho mỗi bạn đọc (bất kể bạn đọc mượn bao nhiêu sách)
+        const alreadySentToday = await this.hasReaderReceivedEmailToday(cleanReaderId, todayStr);
+        if (alreadySentToday) {
+          continue; // Đã gửi email nhắc hôm nay -> Không gửi trùng!
         }
 
-        if (!emailType) continue;
+        const overdueBooks: EmailBookItem[] = [];
+        const nearDueBooks: EmailBookItem[] = [];
 
-        if (isElectron()) {
-          const checkSent = await window.electronAPI!.dbQuery<{ id: number }>(
-            `SELECT id FROM email_notifications
-             WHERE reader_id = ? AND book_id = ? AND email_type = ? AND sent_date = ?
-             LIMIT 1`,
-            [reader.id, b.book_id, emailType, todayStr]
-          );
+        for (const b of readerBorrows) {
+          const dueDateTime = new Date(b.due_date).getTime();
+          const diffDays = Math.round((dueDateTime - todayTime) / (1000 * 3600 * 24));
 
-          if (checkSent.length > 0) {
-            continue;
+          if (diffDays < 0) {
+            overdueBooks.push({
+              title: b.book_title || b.book_id,
+              dueDate: b.due_date,
+              daysDiff: Math.abs(diffDays), // Số ngày quá hạn
+            });
+          } else if (diffDays <= 2) {
+            nearDueBooks.push({
+              title: b.book_title || b.book_id,
+              dueDate: b.due_date,
+              daysDiff: diffDays, // Số ngày còn lại
+            });
           }
         }
 
-        let result;
-        if (emailType === 'OVERDUE') {
+        // Ưu tiên nhắc quá hạn nếu có sách quá hạn; nếu không thì nhắc sắp đến hạn
+        let result: { success: boolean; message: string } | null = null;
+        let emailType: 'OVERDUE' | 'NEAR_DUE' | null = null;
+        let bookSummary = '';
+
+        if (overdueBooks.length > 0) {
+          emailType = 'OVERDUE';
+          bookSummary = overdueBooks.map((b) => b.title).join(', ');
           result = await sendOverdueNotificationEmail(
             reader.name,
             reader.email,
-            [b.book_title || b.book_id],
-            b.due_date
+            overdueBooks,
+            undefined,
+            {
+              apiKey: settings.resend_api_key,
+              fromEmail: settings.resend_from_email,
+            }
           );
-        } else {
+        } else if (nearDueBooks.length > 0) {
+          emailType = 'NEAR_DUE';
+          bookSummary = nearDueBooks.map((b) => b.title).join(', ');
           result = await sendNearDueNotificationEmail(
             reader.name,
             reader.email,
-            [b.book_title || b.book_id],
-            b.due_date,
-            Math.max(0, diffDays)
+            nearDueBooks,
+            undefined,
+            undefined,
+            {
+              apiKey: settings.resend_api_key,
+              fromEmail: settings.resend_from_email,
+            }
           );
         }
 
-        if (result.success) {
-          if (isElectron()) {
-            await window.electronAPI!.dbRun(
-              `INSERT INTO email_notifications (record_id, reader_id, reader_email, book_id, email_type, sent_date)
-               VALUES (?, ?, ?, ?, ?, ?)`,
-              [Number(b.id) || null, reader.id, reader.email, b.book_id, emailType, todayStr]
-            );
-          }
+        // CHỈ ghi nhận vào lịch sử CSDL khi gửi email THỰC SỰ THÀNH CÔNG
+        // (Nếu thất bại do chưa cấu hình API key, KHÔNG ghi nhận để hệ thống có thể thử lại sau)
+        if (result && result.success && emailType) {
+          await this.recordEmailSent(
+            cleanReaderId,
+            reader.email,
+            emailType,
+            bookSummary,
+            todayStr
+          );
 
-          const typeText = emailType === 'OVERDUE' ? 'quá hạn' : 'gần quá hạn';
+          const typeText = emailType === 'OVERDUE' ? 'quá hạn' : 'gần đến hạn';
+          const count = emailType === 'OVERDUE' ? overdueBooks.length : nearDueBooks.length;
           notificationsSent.push(
-            `Đã tự động gửi email nhắc ${typeText} đến ${reader.name} (${reader.email}) cho cuốn "${
-              b.book_title || b.book_id
-            }"!`
+            `Đã gửi 1 email nhắc ${typeText} đến ${reader.name} (${reader.email}) cho ${count} cuốn sách!`
           );
         }
       }

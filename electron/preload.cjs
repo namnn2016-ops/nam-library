@@ -23,4 +23,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // External shell
   openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),
+
+  // Secure Email via Node.js
+  sendEmail: (payload) => ipcRenderer.invoke('email:send', payload),
+  getEmailStatus: (customKey) => ipcRenderer.invoke('email:get-status', customKey),
 });
