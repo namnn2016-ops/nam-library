@@ -621,6 +621,16 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-amber-800 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                  <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  Lưu ý về chính sách dùng thử (Sandbox) của Resend:
+                </div>
+                <p className="text-amber-700/90 leading-relaxed">
+                  Khi địa chỉ gửi là <code>onboarding@resend.dev</code>, Resend <strong>chỉ cho phép gửi đến email chính chủ đã đăng ký tài khoản Resend</strong>. Nếu gửi tới email khác sẽ bị Resend từ chối (HTTP 403). Để gửi đến mọi email độc giả (Gmail, Proton, Outlook...), hãy xác thực tên miền của bạn tại <a href="https://resend.com/domains" target="_blank" rel="noreferrer" className="underline font-bold text-amber-900 hover:text-amber-950">resend.com/domains</a>.
+                </p>
+              </div>
+
               <div className="flex items-center justify-between text-slate-600 border-t border-slate-200/60 pt-2">
                 <span className="flex items-center gap-1.5">
                   <BellRing className="w-3.5 h-3.5 text-indigo-500" />

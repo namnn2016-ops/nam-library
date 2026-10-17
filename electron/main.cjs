@@ -596,9 +596,13 @@ ipcMain.handle('email:send', async (event, { to, subject, html, apiKey, fromEmai
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
+      let msg = errData.message || `Lỗi Resend HTTP ${response.status}`;
+      if (typeof msg === 'string' && msg.includes('only send testing emails')) {
+        msg = `Resend đang ở chế độ thử nghiệm (${activeFrom}): Chỉ cho phép gửi đến email chính chủ tài khoản Resend. Để gửi đến các email khác (${Array.isArray(to) ? to.join(', ') : to}), cần xác minh tên miền tại resend.com/domains hoặc nhập email bạn đọc trùng email tài khoản Resend.`;
+      }
       return {
         success: false,
-        message: errData.message || `Lỗi Resend HTTP ${response.status}`,
+        message: msg,
       };
     }
 

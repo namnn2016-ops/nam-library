@@ -12,7 +12,9 @@ import {
   Sparkles,
   ArrowRight,
   Info,
-  X
+  X,
+  AlertTriangle,
+  Clock
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep, playErrorBeep } from '../services/audio';
@@ -140,13 +142,39 @@ export default function Borrow() {
         }
 
         setSelectedReader(existingReader);
-        await loadBorrowedBooks(existingReader.id);
+        const list = await dbService.getActiveBorrowsByReader(existingReader.id);
+        setBorrowedBooks(list);
         setBarcodeInput('');
+
+        const todayTime = new Date(new Date().toISOString().split('T')[0]).getTime();
+        let overdueCount = 0;
+        let nearDueCount = 0;
+        for (const item of list) {
+          if (item.due_date) {
+            const dueTime = new Date(item.due_date).getTime();
+            const diffDays = Math.round((dueTime - todayTime) / 86400000);
+            if (diffDays < 0) overdueCount++;
+            else if (diffDays <= 2) nearDueCount++;
+          }
+        }
+
         playSoundIfEnabled(true);
-        showToast(
-          `Đã nhận diện bạn đọc: ${existingReader.name}. Quét mã sách để mượn!`,
-          'success'
-        );
+        if (overdueCount > 0) {
+          showToast(
+            `⚠️ CẢNH BÁO: Bạn đọc "${existingReader.name}" có ${overdueCount} cuốn sách ĐÃ QUÁ HẠN!`,
+            'error'
+          );
+        } else if (nearDueCount > 0) {
+          showToast(
+            `⏰ CHÚ Ý: Bạn đọc "${existingReader.name}" có ${nearDueCount} cuốn sách SẮP ĐẾN HẠN (trong 1-2 ngày tới)!`,
+            'warning'
+          );
+        } else {
+          showToast(
+            `Đã nhận diện bạn đọc: ${existingReader.name}. Quét mã sách để mượn!`,
+            'success'
+          );
+        }
         return;
       }
 
@@ -466,6 +494,65 @@ export default function Borrow() {
               </span>
             </div>
 
+            {/* Banner cảnh báo nhanh khi bạn đọc có sách quá hạn hoặc sắp đến hạn */}
+            {selectedReader && borrowedBooks.length > 0 && (() => {
+              const overdueCount = borrowedBooks.filter((b) => {
+                if (!b.due_date) return false;
+                const diff = Math.round(
+                  (new Date(b.due_date).getTime() - new Date(todayStr).getTime()) / 86400000
+                );
+                return diff < 0;
+              }).length;
+
+              const nearDueCount = borrowedBooks.filter((b) => {
+                if (!b.due_date) return false;
+                const diff = Math.round(
+                  (new Date(b.due_date).getTime() - new Date(todayStr).getTime()) / 86400000
+                );
+                return diff >= 0 && diff <= 2;
+              }).length;
+
+              if (overdueCount > 0) {
+                return (
+                  <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-800 text-xs flex items-center justify-between gap-3 animate-fadeIn">
+                    <div className="flex items-center gap-2.5 font-medium">
+                      <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                      <span>
+                        ⚠️ Bạn đọc có <strong className="font-bold underline text-rose-700">{overdueCount} cuốn sách đã quá hạn</strong>. Vui lòng thu hồi hoặc gia hạn ngay!
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleOpenRenewModal}
+                      className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 transition-colors shadow-2xs"
+                    >
+                      Gia hạn
+                    </button>
+                  </div>
+                );
+              }
+
+              if (nearDueCount > 0) {
+                return (
+                  <div className="mb-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3 animate-fadeIn">
+                    <div className="flex items-center gap-2.5 font-medium">
+                      <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+                      <span>
+                        ⏰ <strong>Cảnh báo hạn trả:</strong> Bạn đọc có <strong className="font-bold text-amber-900">{nearDueCount} cuốn sách sắp đến hạn trả</strong> (trong 1-2 ngày tới).
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleOpenRenewModal}
+                      className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition-colors shadow-2xs"
+                    >
+                      Gia hạn
+                    </button>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
+
             {!selectedReader ? (
               <div className="py-16 text-center text-slate-400 flex flex-col items-center gap-3">
                 <BookOpen className="w-12 h-12 text-slate-200" />
@@ -486,14 +573,22 @@ export default function Borrow() {
             ) : (
               <div className="space-y-3">
                 {borrowedBooks.map((item) => {
-                  const isOverdue = item.due_date && item.due_date < todayStr;
+                  const todayDate = new Date(todayStr);
+                  const itemDueDate = item.due_date ? new Date(item.due_date) : null;
+                  const diffDays = itemDueDate
+                    ? Math.round((itemDueDate.getTime() - todayDate.getTime()) / 86400000)
+                    : null;
+                  const isOverdue = diffDays !== null && diffDays < 0;
+                  const isNearDue = diffDays !== null && !isOverdue && diffDays <= 2;
 
                   return (
                     <div
                       key={item.id}
                       className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
                         isOverdue
-                          ? 'bg-rose-50/60 border-rose-200'
+                          ? 'bg-rose-50/70 border-rose-300 ring-1 ring-rose-200'
+                          : isNearDue
+                          ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-200 shadow-2xs'
                           : 'bg-slate-50/80 border-slate-200 hover:border-indigo-200'
                       }`}
                     >
@@ -502,31 +597,59 @@ export default function Borrow() {
                           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                             isOverdue
                               ? 'bg-rose-100 text-rose-600'
+                              : isNearDue
+                              ? 'bg-amber-100 text-amber-700'
                               : 'bg-indigo-100 text-indigo-600'
                           }`}
                         >
-                          <BookOpen className="w-5 h-5" />
+                          {isOverdue ? (
+                            <AlertTriangle className="w-5 h-5" />
+                          ) : isNearDue ? (
+                            <Clock className="w-5 h-5" />
+                          ) : (
+                            <BookOpen className="w-5 h-5" />
+                          )}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono text-xs font-bold text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200">
                               {item.book_id}
                             </span>
                             <h4 className="font-bold text-slate-900 text-sm truncate">
                               {item.book_title}
                             </h4>
+                            {isOverdue ? (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                                ⚠️ Quá hạn {Math.abs(diffDays!)} ngày
+                              </span>
+                            ) : isNearDue ? (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                                ⏰ Sắp đến hạn ({diffDays === 0 ? 'Hôm nay' : `Còn ${diffDays} ngày`})
+                              </span>
+                            ) : null}
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500">
+                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-500">
                             <span>Mượn ngày: {item.borrow_date}</span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               Hạn trả:
                               <strong
                                 className={`font-semibold ${
-                                  isOverdue ? 'text-rose-600 underline' : 'text-indigo-600'
+                                  isOverdue
+                                    ? 'text-rose-600 underline'
+                                    : isNearDue
+                                    ? 'text-amber-700 underline font-bold'
+                                    : 'text-indigo-600'
                                 }`}
                               >
-                                {item.due_date} {isOverdue && '(QUÁ HẠN)'}
+                                {item.due_date}{' '}
+                                {isOverdue
+                                  ? '(ĐÃ QUÁ HẠN)'
+                                  : isNearDue
+                                  ? diffDays === 0
+                                    ? '(HẾT HẠN HÔM NAY)'
+                                    : `(CÒN ${diffDays} NGÀY)`
+                                  : ''}
                               </strong>
                             </span>
                             {item.renew_count ? (

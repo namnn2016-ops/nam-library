@@ -83,9 +83,13 @@ async function dispatchEmail(options: {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
+      let msg = errData.message || `Lỗi HTTP ${response.status}`;
+      if (typeof msg === 'string' && msg.includes('only send testing emails')) {
+        msg = `Resend đang ở chế độ thử nghiệm (${options.fromEmail || 'onboarding@resend.dev'}): Chỉ cho phép gửi đến email chính chủ tài khoản Resend. Để gửi đến các email khác (${options.to}), cần xác minh tên miền tại resend.com/domains hoặc nhập email bạn đọc trùng email tài khoản Resend.`;
+      }
       return {
         success: false,
-        message: errData.message || `Lỗi HTTP ${response.status}`,
+        message: msg,
       };
     }
 

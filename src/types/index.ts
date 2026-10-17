@@ -55,6 +55,17 @@ export interface OverdueReaderInfo {
   }>;
 }
 
+export interface NearDueReaderInfo {
+  reader: Reader;
+  near_due_books: Array<{
+    record_id: string | number;
+    book_id: string;
+    book_title: string;
+    due_date: string;
+    days_left: number;
+  }>;
+}
+
 export interface AuthUser {
   id: string;
   name: string;

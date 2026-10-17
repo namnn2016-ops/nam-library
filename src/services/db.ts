@@ -1,4 +1,4 @@
-import type { Book, Reader, BorrowRecord, AppSettings, OverdueReaderInfo, EmailBookItem } from '../types';
+import type { Book, Reader, BorrowRecord, AppSettings, OverdueReaderInfo, NearDueReaderInfo, EmailBookItem } from '../types';
 import { sendOverdueNotificationEmail, sendNearDueNotificationEmail } from './email';
 import { getStoredDesktopUser } from './auth';
 
@@ -778,33 +778,52 @@ export const dbService = {
     const totalReadersCount = readers.length;
 
     const overdueReaderMap = new Map<string, OverdueReaderInfo>();
+    const nearDueReaderMap = new Map<string, NearDueReaderInfo>();
 
     activeBorrows.forEach((b) => {
-      if (b.due_date && b.due_date < todayStr) {
-        const reader = readers.find((r) => r.id.toUpperCase() === b.reader_id.toUpperCase());
-        if (reader) {
-          const diffDays = Math.ceil(
-            (new Date(todayStr).getTime() - new Date(b.due_date).getTime()) / (1000 * 3600 * 24)
-          );
-          if (!overdueReaderMap.has(reader.id)) {
-            overdueReaderMap.set(reader.id, {
-              reader,
-              overdue_books: [],
-            });
-          }
-          overdueReaderMap.get(reader.id)!.overdue_books.push({
-            record_id: b.id,
-            book_id: b.book_id,
-            book_title: b.book_title || b.book_id,
-            due_date: b.due_date,
-            days_overdue: diffDays,
+      if (!b.due_date) return;
+      const reader = readers.find((r) => r.id.toUpperCase() === b.reader_id.toUpperCase());
+      if (!reader) return;
+
+      const diffDays = Math.round(
+        (new Date(b.due_date).getTime() - new Date(todayStr).getTime()) / (1000 * 3600 * 24)
+      );
+
+      if (diffDays < 0) {
+        if (!overdueReaderMap.has(reader.id)) {
+          overdueReaderMap.set(reader.id, {
+            reader,
+            overdue_books: [],
           });
         }
+        overdueReaderMap.get(reader.id)!.overdue_books.push({
+          record_id: b.id,
+          book_id: b.book_id,
+          book_title: b.book_title || b.book_id,
+          due_date: b.due_date,
+          days_overdue: Math.abs(diffDays),
+        });
+      } else if (diffDays <= 2) {
+        if (!nearDueReaderMap.has(reader.id)) {
+          nearDueReaderMap.set(reader.id, {
+            reader,
+            near_due_books: [],
+          });
+        }
+        nearDueReaderMap.get(reader.id)!.near_due_books.push({
+          record_id: b.id,
+          book_id: b.book_id,
+          book_title: b.book_title || b.book_id,
+          due_date: b.due_date,
+          days_left: diffDays,
+        });
       }
     });
 
     const overdueReadersList = Array.from(overdueReaderMap.values());
     const overdueReadersCount = overdueReadersList.length;
+    const nearDueReadersList = Array.from(nearDueReaderMap.values());
+    const nearDueReadersCount = nearDueReadersList.length;
 
     const today = new Date();
     const chartData = [];
@@ -835,6 +854,8 @@ export const dbService = {
       total_readers_count: totalReadersCount,
       overdue_readers_count: overdueReadersCount,
       overdue_readers_list: overdueReadersList,
+      near_due_readers_count: nearDueReadersCount,
+      near_due_readers_list: nearDueReadersList,
       chart_data: chartData,
       recent_borrows: activeBorrows.slice(0, 5),
     };
