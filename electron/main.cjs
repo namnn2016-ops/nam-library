@@ -10,7 +10,10 @@ function loadEnvFile() {
   const envCandidates = [
     path.join(process.cwd(), '.env'),
     path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '..', '..', '.env'),
+    path.join(path.dirname(process.execPath), '.env'),
     path.join(app.getPath('userData'), '.env'),
+    'D:\\nam\'s projects\\nam-libary\\.env',
   ];
   for (const envPath of envCandidates) {
     if (fs.existsSync(envPath)) {
@@ -23,7 +26,7 @@ function loadEnvFile() {
             if (idx > 0) {
               const k = trimmed.slice(0, idx).trim();
               const v = trimmed.slice(idx + 1).trim();
-              if (!process.env[k]) {
+              if (!process.env[k] || process.env[k].trim() === '') {
                 process.env[k] = v;
               }
             }
@@ -32,7 +35,6 @@ function loadEnvFile() {
       } catch (e) {
         console.error('Lỗi nạp .env trong Electron:', e);
       }
-      break;
     }
   }
 }
@@ -570,7 +572,7 @@ ipcMain.handle('storage:import-backup', async () => {
 // IPC Handlers: Resend Email Service (Gửi trực tiếp từ Node.js Electron - Không để lộ API Key trên Web)
 ipcMain.handle('email:send', async (event, { to, subject, html, apiKey, fromEmail }) => {
   const activeKey = (apiKey || process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY || '').trim();
-  const activeFrom = (fromEmail || process.env.RESEND_FROM_EMAIL || process.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev').trim();
+  const activeFrom = (fromEmail || process.env.RESEND_FROM_EMAIL || process.env.VITE_RESEND_FROM_EMAIL || 'nam-library@hellootis.cloud-ip.cc').trim();
 
   if (!activeKey) {
     return {
@@ -622,7 +624,7 @@ ipcMain.handle('email:send', async (event, { to, subject, html, apiKey, fromEmai
 
 ipcMain.handle('email:get-status', async (event, customApiKey) => {
   const activeKey = (customApiKey || process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY || '').trim();
-  const activeFrom = (process.env.RESEND_FROM_EMAIL || process.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev').trim();
+  const activeFrom = (process.env.RESEND_FROM_EMAIL || process.env.VITE_RESEND_FROM_EMAIL || 'nam-library@hellootis.cloud-ip.cc').trim();
   const isConfigured = Boolean(activeKey && activeKey.length > 0);
   const maskedKey = isConfigured
     ? `${activeKey.substring(0, 5)}***${activeKey.substring(Math.max(0, activeKey.length - 3))}`

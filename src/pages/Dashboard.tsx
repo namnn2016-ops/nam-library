@@ -87,8 +87,8 @@ export default function Dashboard() {
       books,
       undefined,
       {
-        apiKey: settings.resend_api_key,
-        fromEmail: settings.resend_from_email,
+        apiKey: settings.resend_api_key || undefined,
+        fromEmail: settings.resend_from_email || undefined,
       }
     );
 
@@ -131,8 +131,8 @@ export default function Dashboard() {
       undefined,
       undefined,
       {
-        apiKey: settings.resend_api_key,
-        fromEmail: settings.resend_from_email,
+        apiKey: settings.resend_api_key || undefined,
+        fromEmail: settings.resend_from_email || undefined,
       }
     );
 

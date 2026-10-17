@@ -74,7 +74,7 @@ async function dispatchEmail(options: {
         Authorization: `Bearer ${activeKey}`,
       },
       body: JSON.stringify({
-        from: options.fromEmail || 'onboarding@resend.dev',
+        from: options.fromEmail || 'nam-library@hellootis.cloud-ip.cc',
         to: [options.to],
         subject: options.subject,
         html: options.html,

@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   max_books_per_reader: 3,
   auto_email_enabled: true,
   resend_api_key: '',
-  resend_from_email: 'onboarding@resend.dev',
+  resend_from_email: '',
 };
 
 // Kiểm tra môi trường Electron
@@ -63,7 +63,7 @@ export const dbService = {
         max_books_per_reader: parseInt(map['max_books_per_reader'] || '3', 10),
         auto_email_enabled: map['auto_email_enabled'] !== 'false',
         resend_api_key: map['resend_api_key'] || '',
-        resend_from_email: map['resend_from_email'] || 'onboarding@resend.dev',
+        resend_from_email: map['resend_from_email'] || '',
       };
     } catch (err) {
       console.warn('Lỗi đọc settings SQLite, dùng mặc định:', err);
@@ -1015,8 +1015,8 @@ export const dbService = {
             overdueBooks,
             undefined,
             {
-              apiKey: settings.resend_api_key,
-              fromEmail: settings.resend_from_email,
+              apiKey: settings.resend_api_key || undefined,
+              fromEmail: settings.resend_from_email || undefined,
             }
           );
         } else if (nearDueBooks.length > 0) {
@@ -1029,8 +1029,8 @@ export const dbService = {
             undefined,
             undefined,
             {
-              apiKey: settings.resend_api_key,
-              fromEmail: settings.resend_from_email,
+              apiKey: settings.resend_api_key || undefined,
+              fromEmail: settings.resend_from_email || undefined,
             }
           );
         }

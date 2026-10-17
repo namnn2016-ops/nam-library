@@ -16,7 +16,8 @@ import {
   Download,
   Upload,
   ShieldCheck,
-  Lock
+  Lock,
+  Info
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep, playErrorBeep } from '../services/audio';
