@@ -73,6 +73,12 @@ export default function Header({ user, onLogout }: HeaderProps) {
             </kbd>
             <span>Xóa / Reset</span>
           </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-700">
+            <kbd className="px-1 py-0.5 rounded bg-white font-mono font-bold text-emerald-600 shadow-2xs border border-slate-200 text-[11px]">
+              Enter
+            </kbd>
+            <span>Xác nhận / Lưu</span>
+          </div>
         </div>
       </div>
 

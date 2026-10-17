@@ -34,8 +34,8 @@ export default function WebRestrictedPage() {
           </div>
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
             <Monitor className="w-5 h-5 text-cyan-400" />
-            <div className="text-xs font-bold text-white">Phím Tắt F6 / F9</div>
-            <div className="text-[11px] text-slate-400">Tối ưu quét barcode siêu tốc</div>
+            <div className="text-xs font-bold text-white">Phím Tắt F6 / F9 / Enter</div>
+            <div className="text-[11px] text-slate-400">Tối ưu quét barcode &amp; xác nhận/lưu</div>
           </div>
         </div>
 

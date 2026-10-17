@@ -149,6 +149,10 @@ export default function Sidebar({
             <span>Làm mới</span>
             <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 font-mono text-indigo-300 font-semibold">F9</kbd>
           </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span>Xác nhận / Lưu</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 font-mono text-emerald-400 font-semibold">Enter</kbd>
+          </div>
         </div>
       )}
     </aside>

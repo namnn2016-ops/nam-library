@@ -147,8 +147,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setSaving(true);
     try {
       await dbService.saveSettings(settings);
@@ -162,6 +162,22 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
+
+  // Cho phép bấm Enter để xác nhận hoặc lưu bất kỳ lúc nào trên trang cài đặt
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA')) {
+          return;
+        }
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings]);
 
   const handleClearData = async () => {
     if (
@@ -184,17 +200,32 @@ export default function SettingsPage() {
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6 animate-fadeIn">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-600">
-          <Sparkles className="w-4 h-4" />
-          Hệ Thống Cấu Hình
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-600">
+            <Sparkles className="w-4 h-4" />
+            Hệ Thống Cấu Hình
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            Cài Đặt Hệ Thống
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Quản lý tài khoản, đồng bộ đa máy (OneDrive), sao lưu dữ liệu và dịch vụ email. Bấm <strong>Lưu Tất Cả Cài Đặt</strong> hoặc nhấn phím <kbd className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-mono font-bold text-[11px]">Enter</kbd> để lưu.
+          </p>
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          Cài Đặt Hệ Thống
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Quản lý tài khoản, đồng bộ đa máy (OneDrive), sao lưu dữ liệu và dịch vụ email
-        </p>
+
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => handleSave()}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer self-start sm:self-auto shrink-0"
+        >
+          <Save className="w-4 h-4" />
+          <span>{saving ? 'Đang lưu...' : 'Lưu Cài Đặt'}</span>
+          <kbd className="ml-1 px-1.5 py-0.5 rounded bg-indigo-700 border border-indigo-400 font-mono text-[10px] text-white">
+            Enter
+          </kbd>
+        </button>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -619,14 +650,26 @@ export default function SettingsPage() {
         </div>
 
         {/* NÚT LƯU THAY ĐỔI */}
-        <div className="flex justify-end pt-2">
+        <div className="sticky bottom-6 z-20 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <span className="font-semibold text-slate-700">Phím tắt nhanh:</span>
+            <span>Bấm phím</span>
+            <kbd className="px-2 py-0.5 rounded bg-slate-100 border border-slate-300 font-mono font-bold text-emerald-600 text-xs shadow-2xs">
+              Enter
+            </kbd>
+            <span>để xác nhận hoặc lưu cài đặt</span>
+          </div>
+
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer shrink-0"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? 'Đang lưu...' : 'Lưu Tất Cả Cài Đặt'}</span>
+            <kbd className="ml-1 px-1.5 py-0.5 rounded bg-indigo-700 border border-indigo-400 font-mono text-[10px] text-white">
+              Enter
+            </kbd>
           </button>
         </div>
       </form>

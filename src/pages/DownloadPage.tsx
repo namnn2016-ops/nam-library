@@ -188,7 +188,7 @@ export default function DownloadPage() {
 
             {/* Description */}
             <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Phần mềm máy tính Windows được xây dựng với công nghệ hiện đại. Tối ưu hoàn hảo cho máy quét mã vạch qua phím tắt <span className="font-mono text-cyan-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F6</span> / <span className="font-mono text-rose-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F9</span>, hệ thống phát âm thanh thông minh, tự động gửi email nhắc hạn qua <span className="text-indigo-300 font-semibold">Resend API</span> và lưu trữ dữ liệu cục bộ riêng biệt cho từng tài khoản trên ổ đĩa máy tính (SQLite).
+              Phần mềm máy tính Windows được xây dựng với công nghệ hiện đại. Tối ưu hoàn hảo cho máy quét mã vạch qua phím tắt <span className="font-mono text-cyan-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F6</span> / <span className="font-mono text-rose-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">F9</span> / <span className="font-mono text-emerald-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">Enter</span> (Xác nhận/Lưu), hệ thống phát âm thanh thông minh, tự động gửi email nhắc hạn qua <span className="text-indigo-300 font-semibold">Resend API</span> và lưu trữ dữ liệu cục bộ riêng biệt cho từng tài khoản trên ổ đĩa máy tính (SQLite).
             </p>
 
             {/* Download CTA Card */}
@@ -307,7 +307,7 @@ export default function DownloadPage() {
                 {/* Floating Micro-Badges */}
                 <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-md border border-indigo-500/30 px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-2">
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-[11px] font-bold text-slate-200">Phím tắt F6/F9 Siêu Tốc</span>
+                  <span className="text-[11px] font-bold text-slate-200">Phím tắt F6/F9/Enter Siêu Tốc</span>
                 </div>
 
                 <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-emerald-500/30 px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-2">
@@ -353,7 +353,7 @@ export default function DownloadPage() {
           {/* Feature Tabs Selector */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             {[
-              { id: 'scanner', label: 'Quầy Mượn Trả Siêu Tốc (F6/F9)', icon: Barcode },
+              { id: 'scanner', label: 'Quầy Mượn Trả Siêu Tốc (F6/F9/Enter)', icon: Barcode },
               { id: 'email', label: 'Tự Động Gửi Email Nhắc Hạn', icon: Mail },
               { id: 'analytics', label: 'Biểu Đồ Thống Kê 6 Tháng', icon: BarChart3 },
               { id: 'readers', label: 'Tự Xóa Độc Giả Hết Hạn', icon: ShieldCheck },
@@ -396,6 +396,10 @@ export default function DownloadPage() {
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>Phím tắt <strong>F9</strong>: Xóa sạch thông tin đang hiển thị và đưa quầy về trạng thái sẵn sàng.</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Phím <strong>Enter</strong>: Bấm để xác nhận quét mã, hoàn tất biểu mẫu hoặc lưu cài đặt hệ thống.</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -602,7 +606,7 @@ export default function DownloadPage() {
             {[
               { key: 'F6', label: 'Vào ô quét mã', desc: 'Focus tức thì vào ô nhập mã mượn/trả', color: 'border-indigo-500/50 text-indigo-400' },
               { key: 'F9', label: 'Làm mới / Reset', desc: 'Xóa thông tin bạn đọc và đưa quầy về ban đầu', color: 'border-rose-500/50 text-rose-400' },
-              { key: 'Enter', label: 'Xác nhận mã', desc: 'Tự động kích hoạt khi quét bằng súng quét mã', color: 'border-cyan-500/50 text-cyan-400' },
+              { key: 'Enter', label: 'Xác nhận hoặc Lưu', desc: 'Bấm Enter để xác nhận mã, nộp biểu mẫu hoặc lưu cài đặt hệ thống', color: 'border-emerald-500/50 text-emerald-400' },
               { key: 'Esc', label: 'Đóng Popup Modal', desc: 'Thoát nhanh các cửa sổ gia hạn và thêm mới', color: 'border-amber-500/50 text-amber-400' },
             ].map((s) => (
               <button
