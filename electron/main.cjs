@@ -321,6 +321,23 @@ function switchUserDb(userId) {
           sent_date TEXT
         )`);
 
+        currentDb.run(`CREATE TABLE IF NOT EXISTS penalty_records (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          borrow_id INTEGER,
+          reader_id TEXT,
+          reader_name TEXT,
+          book_id TEXT,
+          book_title TEXT,
+          days_overdue INTEGER DEFAULT 0,
+          fee_per_day REAL DEFAULT 0,
+          total_fee REAL DEFAULT 0,
+          paid_amount REAL DEFAULT 0,
+          payment_method TEXT,
+          paid_date TEXT,
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
         resolve({ success: true, dbPath, userId: safeUserId });
       });
     });

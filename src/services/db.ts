@@ -1,4 +1,4 @@
-import type { Book, Reader, BorrowRecord, AppSettings, OverdueReaderInfo, NearDueReaderInfo, EmailBookItem } from '../types';
+import type { Book, Reader, BorrowRecord, AppSettings, OverdueReaderInfo, NearDueReaderInfo, EmailBookItem, PenaltyRecord } from '../types';
 import { sendOverdueNotificationEmail, sendNearDueNotificationEmail } from './email';
 import { getStoredDesktopUser } from './auth';
 
@@ -9,6 +9,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   auto_email_enabled: true,
   resend_api_key: '',
   resend_from_email: '',
+  late_fee_per_day: 5000,
+  bank_bin: '970422',
+  bank_code: 'MB',
+  bank_name: 'MBBank (Ngân hàng Quân Đội)',
+  bank_account_no: '',
+  bank_account_name: '',
 };
 
 // Kiểm tra môi trường Electron
@@ -64,6 +70,12 @@ export const dbService = {
         auto_email_enabled: map['auto_email_enabled'] !== 'false',
         resend_api_key: map['resend_api_key'] || '',
         resend_from_email: map['resend_from_email'] || '',
+        late_fee_per_day: parseInt(map['late_fee_per_day'] || '5000', 10),
+        bank_bin: map['bank_bin'] || '970422',
+        bank_code: map['bank_code'] || 'MB',
+        bank_name: map['bank_name'] || 'MBBank (Ngân hàng Quân Đội)',
+        bank_account_no: map['bank_account_no'] || '',
+        bank_account_name: map['bank_account_name'] || '',
       };
     } catch (err) {
       console.warn('Lỗi đọc settings SQLite, dùng mặc định:', err);
@@ -81,12 +93,13 @@ export const dbService = {
     }
 
     try {
-      const pairs = [
+      const pairs: [string, string][] = [
         ['sound_enabled', String(updated.sound_enabled)],
         ['borrow_days', String(updated.borrow_days)],
         ['max_borrow_days', String(updated.borrow_days)],
         ['max_books_per_reader', String(updated.max_books_per_reader)],
         ['auto_email_enabled', String(updated.auto_email_enabled ?? true)],
+        ['late_fee_per_day', String(updated.late_fee_per_day ?? 5000)],
       ];
 
       if (updated.resend_api_key !== undefined) {
@@ -94,6 +107,21 @@ export const dbService = {
       }
       if (updated.resend_from_email !== undefined) {
         pairs.push(['resend_from_email', updated.resend_from_email.trim()]);
+      }
+      if (updated.bank_bin !== undefined) {
+        pairs.push(['bank_bin', updated.bank_bin.trim()]);
+      }
+      if (updated.bank_code !== undefined) {
+        pairs.push(['bank_code', updated.bank_code.trim()]);
+      }
+      if (updated.bank_name !== undefined) {
+        pairs.push(['bank_name', updated.bank_name.trim()]);
+      }
+      if (updated.bank_account_no !== undefined) {
+        pairs.push(['bank_account_no', updated.bank_account_no.trim()]);
+      }
+      if (updated.bank_account_name !== undefined) {
+        pairs.push(['bank_account_name', updated.bank_account_name.trim().toUpperCase()]);
       }
 
       for (const [key, val] of pairs) {
@@ -664,10 +692,18 @@ export const dbService = {
   },
 
   /**
-   * Trả sách (Tự động theo mã sách)
+   * Trả sách (Tự động theo mã sách, hỗ trợ lưu thông tin phạt quá hạn)
    */
   async returnBook(
-    bookId: string
+    bookId: string,
+    penaltyDetails?: {
+      daysOverdue: number;
+      feePerDay: number;
+      totalFee: number;
+      paidAmount: number;
+      paymentMethod: 'CASH' | 'BANK' | 'WAIVED';
+      notes?: string;
+    }
   ): Promise<{ record: BorrowRecord; book: Book; readerName: string }> {
     const cleanBookId = bookId.trim().toUpperCase();
     const book = await this.getBookById(cleanBookId);
@@ -698,6 +734,26 @@ export const dbService = {
         setLocalData('books', allBooks);
       }
 
+      if (penaltyDetails && (penaltyDetails.totalFee > 0 || penaltyDetails.paymentMethod === 'WAIVED')) {
+        const penalties = getLocalData<PenaltyRecord[]>('penalty_records', []);
+        penalties.unshift({
+          id: Date.now(),
+          borrow_id: activeBorrow.id,
+          reader_id: activeBorrow.reader_id,
+          reader_name: activeBorrow.reader_name || activeBorrow.reader_id,
+          book_id: book.id,
+          book_title: book.title,
+          days_overdue: penaltyDetails.daysOverdue,
+          fee_per_day: penaltyDetails.feePerDay,
+          total_fee: penaltyDetails.totalFee,
+          paid_amount: penaltyDetails.paidAmount,
+          payment_method: penaltyDetails.paymentMethod,
+          paid_date: todayStr,
+          notes: penaltyDetails.notes,
+        });
+        setLocalData('penalty_records', penalties);
+      }
+
       return {
         record: { ...activeBorrow, status: 'RETURNED', return_date: todayStr },
         book: { ...book, status: 'AVAILABLE' },
@@ -717,6 +773,31 @@ export const dbService = {
       [cleanBookId]
     );
 
+    if (penaltyDetails && (penaltyDetails.totalFee > 0 || penaltyDetails.paymentMethod === 'WAIVED')) {
+      try {
+        await window.electronAPI!.dbRun(
+          `INSERT INTO penalty_records (borrow_id, reader_id, reader_name, book_id, book_title, days_overdue, fee_per_day, total_fee, paid_amount, payment_method, paid_date, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            activeBorrow.id,
+            activeBorrow.reader_id,
+            activeBorrow.reader_name || activeBorrow.reader_id,
+            book.id,
+            book.title,
+            penaltyDetails.daysOverdue,
+            penaltyDetails.feePerDay,
+            penaltyDetails.totalFee,
+            penaltyDetails.paidAmount,
+            penaltyDetails.paymentMethod,
+            todayStr,
+            penaltyDetails.notes || null,
+          ]
+        );
+      } catch (pErr) {
+        console.warn('Lỗi ghi bản ghi phạt vào SQLite:', pErr);
+      }
+    }
+
     return {
       record: {
         ...activeBorrow,
@@ -726,6 +807,25 @@ export const dbService = {
       book: { ...book, status: 'AVAILABLE' },
       readerName: activeBorrow.reader_name || activeBorrow.reader_id,
     };
+  },
+
+  async getPenaltyRecords(): Promise<PenaltyRecord[]> {
+    if (!isElectron()) {
+      return getLocalData<PenaltyRecord[]>('penalty_records', []);
+    }
+    try {
+      const rows = await window.electronAPI!.dbQuery<PenaltyRecord>(
+        `SELECT id, borrow_id, reader_id, reader_name, book_id, book_title,
+                days_overdue, fee_per_day, total_fee, paid_amount, payment_method,
+                paid_date, notes
+         FROM penalty_records
+         ORDER BY id DESC`
+      );
+      return rows;
+    } catch (err) {
+      console.warn('Lỗi lấy danh sách phạt từ SQLite:', err);
+      return [];
+    }
   },
 
   /**

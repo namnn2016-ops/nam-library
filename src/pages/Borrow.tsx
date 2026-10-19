@@ -14,12 +14,36 @@ import {
   Info,
   X,
   AlertTriangle,
-  Clock
+  Clock,
+  QrCode,
+  Banknote,
+  Coins,
+  Check,
+  Copy,
+  Receipt,
+  CheckCircle2
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep, playErrorBeep } from '../services/audio';
 import { useToast } from '../context/ToastContext';
-import type { Reader, BorrowRecord } from '../types';
+import { getVietQrUrl, formatVnd, generateCashSuggestions } from '../constants/banks';
+import type { Reader, BorrowRecord, AppSettings } from '../types';
+
+interface ReturnModalData {
+  borrowRecord: BorrowRecord;
+  bookId: string;
+  bookTitle: string;
+  readerId: string;
+  readerName: string;
+  readerEmail?: string;
+  borrowDate: string;
+  dueDate: string;
+  returnDate: string;
+  daysOverdue: number;
+  feePerDay: number;
+  totalFine: number;
+  settings: AppSettings;
+}
 
 export default function Borrow() {
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -30,6 +54,13 @@ export default function Borrow() {
   // Modal Gia hạn sách
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
   const [selectedRenewIds, setSelectedRenewIds] = useState<(string | number)[]>([]);
+
+  // Modal Thu hồi & Tính tiền phạt theo hạn
+  const [returnModalData, setReturnModalData] = useState<ReturnModalData | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK'>('CASH');
+  const [customerCash, setCustomerCash] = useState<number>(0);
+  const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
+  const [isProcessingReturn, setIsProcessingReturn] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
@@ -73,9 +104,155 @@ export default function Borrow() {
     }
   };
 
-  // Bắt phím tắt toàn cục F6 & F9
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBankField(label);
+    showToast(`Đã sao chép ${label}!`, 'success');
+    setTimeout(() => setCopiedBankField(null), 2000);
+  };
+
+  const handleInitiateReturn = async (bookId: string) => {
+    try {
+      const cleanBookId = bookId.trim().toUpperCase();
+      const activeBorrow = await dbService.getActiveBorrowByBook(cleanBookId);
+      if (!activeBorrow) {
+        throw new Error(`Sách với mã "${cleanBookId}" hiện không ở trạng thái được mượn!`);
+      }
+
+      const [book, reader, settings] = await Promise.all([
+        dbService.getBookById(cleanBookId),
+        dbService.getReaderById(activeBorrow.reader_id),
+        dbService.getSettings(),
+      ]);
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayTime = new Date(todayStr).getTime();
+      const dueTime = new Date(activeBorrow.due_date).getTime();
+      const diffDays = Math.round((todayTime - dueTime) / 86400000);
+      const daysOverdue = Math.max(0, diffDays);
+      const feePerDay = settings.late_fee_per_day ?? 5000;
+      const totalFine = daysOverdue * feePerDay;
+
+      setReturnModalData({
+        borrowRecord: activeBorrow,
+        bookId: cleanBookId,
+        bookTitle: book?.title || activeBorrow.book_title || cleanBookId,
+        readerId: activeBorrow.reader_id,
+        readerName: reader?.name || activeBorrow.reader_name || activeBorrow.reader_id,
+        readerEmail: reader?.email || '',
+        borrowDate: activeBorrow.borrow_date,
+        dueDate: activeBorrow.due_date,
+        returnDate: todayStr,
+        daysOverdue,
+        feePerDay,
+        totalFine,
+        settings,
+      });
+
+      setPaymentMethod('CASH');
+      setCustomerCash(totalFine);
+
+      if (daysOverdue > 0) {
+        playSoundIfEnabled(false);
+      } else {
+        playSoundIfEnabled(true);
+      }
+    } catch (err: unknown) {
+      const error = err as Error;
+      playSoundIfEnabled(false);
+      showToast(error.message || 'Lỗi khi chuẩn bị trả sách!', 'error');
+    }
+  };
+
+  const handleConfirmReturn = async (isWaived = false) => {
+    if (!returnModalData || isProcessingReturn) return;
+    setIsProcessingReturn(true);
+
+    try {
+      const { bookId, daysOverdue, feePerDay, totalFine } = returnModalData;
+      const actualPaymentMethod: 'CASH' | 'BANK' | 'WAIVED' = isWaived
+        ? 'WAIVED'
+        : totalFine > 0
+        ? paymentMethod
+        : 'CASH';
+      const paidAmount = isWaived ? 0 : totalFine;
+
+      const { book, readerName } = await dbService.returnBook(bookId, {
+        daysOverdue,
+        feePerDay,
+        totalFee,
+        paidAmount,
+        paymentMethod: actualPaymentMethod,
+        notes: isWaived
+          ? 'Miễn tiền phạt quá hạn'
+          : totalFine > 0
+          ? `Thanh toán ${formatVnd(totalFine)} qua ${
+              actualPaymentMethod === 'CASH' ? 'Tiền mặt' : 'VietQR Ngân hàng'
+            }`
+          : 'Trả sách đúng hạn',
+      });
+
+      if (selectedReader) {
+        await loadBorrowedBooks(selectedReader.id);
+      }
+
+      setReturnModalData(null);
+      playSoundIfEnabled(true);
+
+      if (totalFine > 0 && !isWaived) {
+        showToast(
+          `Thu hồi "${book.title}" từ bạn đọc ${readerName} thành công! Đã thu ${formatVnd(
+            totalFine
+          )} tiền phạt (${actualPaymentMethod === 'CASH' ? 'Tiền mặt' : 'VietQR'}).`,
+          'success'
+        );
+      } else if (isWaived) {
+        showToast(
+          `Thu hồi "${book.title}" thành công (Đã miễn khoản phạt ${formatVnd(totalFine)})!`,
+          'info'
+        );
+      } else {
+        showToast(`Thu hồi "${book.title}" từ bạn đọc ${readerName} đúng hạn thành công!`, 'success');
+      }
+
+      setBarcodeInput('');
+    } catch (err: unknown) {
+      const error = err as Error;
+      playSoundIfEnabled(false);
+      showToast(error.message || 'Lỗi khi hoàn tất trả sách!', 'error');
+    } finally {
+      setIsProcessingReturn(false);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    }
+  };
+
+  const handleDirectReturn = async (bookId: string) => {
+    await handleInitiateReturn(bookId);
+  };
+
+  // Bắt phím tắt toàn cục F6 & F9, Enter & Esc cho popup trả sách
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (returnModalData) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setReturnModalData(null);
+          setTimeout(() => inputRef.current?.focus(), 50);
+          return;
+        }
+        if (e.key === 'Enter') {
+          const target = e.target as HTMLElement;
+          if (target && target.tagName === 'INPUT' && target.getAttribute('type') === 'number') {
+            return;
+          }
+          e.preventDefault();
+          handleConfirmReturn(false);
+          return;
+        }
+      }
+
       if (e.key === 'F6') {
         e.preventDefault();
         handleFocusInput();
@@ -87,7 +264,7 @@ export default function Borrow() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [returnModalData, isProcessingReturn, customerCash, paymentMethod]);
 
   // Tự động focus ô nhập mã khi mở trang
   useEffect(() => {
@@ -178,23 +355,11 @@ export default function Borrow() {
         return;
       }
 
-      // Kiểm tra có phải sách đang mượn -> Tự động trả sách
+      // Kiểm tra có phải sách đang mượn -> Mở popup thu hồi & tính tiền phạt
       const activeBorrow = await dbService.getActiveBorrowByBook(rawCode);
       if (activeBorrow) {
-        try {
-          const { book, readerName } = await dbService.returnBook(rawCode);
-          setBarcodeInput('');
-          playSoundIfEnabled(true);
-          showToast(
-            `Thu hồi "${book.title}" từ bạn đọc ${readerName} thành công!`,
-            'success'
-          );
-        } catch (err: unknown) {
-          const error = err as Error;
-          playSoundIfEnabled(false);
-          showToast(error.message || 'Lỗi khi trả sách!', 'error');
-          setBarcodeInput('');
-        }
+        setBarcodeInput('');
+        await handleInitiateReturn(rawCode);
         return;
       }
 
@@ -265,24 +430,6 @@ export default function Borrow() {
     } catch (err: unknown) {
       const error = err as Error;
       showToast(error.message || 'Lỗi gia hạn sách', 'error');
-    }
-  };
-
-  const handleDirectReturn = async (bookId: string) => {
-    try {
-      const { book } = await dbService.returnBook(bookId);
-      if (selectedReader) {
-        await loadBorrowedBooks(selectedReader.id);
-      }
-      playSoundIfEnabled(true);
-      showToast(`Đã trả sách "${book.title}" thành công!`, 'success');
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 0);
-    } catch (err: unknown) {
-      const error = err as Error;
-      playSoundIfEnabled(false);
-      showToast(error.message || 'Lỗi trả sách!', 'error');
     }
   };
 
@@ -777,6 +924,414 @@ export default function Borrow() {
               >
                 Xác nhận Gia hạn
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* POPUP TRẢ SÁCH Ở GIỮA MÀN HÌNH & TÍNH TIỀN PHẠT THEO HẠN (VIETQR / TIỀN MẶT) */}
+      {returnModalData && createPortal(
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`p-2 rounded-xl ${
+                    returnModalData.totalFine > 0
+                      ? 'bg-rose-100 text-rose-600'
+                      : 'bg-emerald-100 text-emerald-600'
+                  }`}
+                >
+                  {returnModalData.totalFine > 0 ? (
+                    <Receipt className="w-5 h-5" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {returnModalData.totalFine > 0
+                      ? 'Thu Hồi Sách & Thu Tiền Phạt Quá Hạn'
+                      : 'Xác Nhận Thu Hồi Sách'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {returnModalData.totalFine > 0
+                      ? `Sách trễ hạn ${returnModalData.daysOverdue} ngày. Vui lòng thanh toán tiền phạt.`
+                      : 'Sách trả đúng hạn. Không phát sinh phí phạt.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setReturnModalData(null);
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                title="Đóng (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Thông tin Sách & Bạn đọc */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-[11px] bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded">
+                      {returnModalData.bookId}
+                    </span>
+                    <h4 className="font-bold text-slate-900 text-sm truncate">
+                      {returnModalData.bookTitle}
+                    </h4>
+                  </div>
+                  <p className="text-slate-500 mt-1">
+                    Bạn đọc: <strong className="text-slate-800">{returnModalData.readerName}</strong>{' '}
+                    <span className="font-mono text-slate-400">({returnModalData.readerId})</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/60 text-[11px]">
+                <div>
+                  <span className="text-slate-400 block">Ngày mượn:</span>
+                  <span className="font-semibold text-slate-700">{returnModalData.borrowDate}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Hạn trả:</span>
+                  <span className="font-semibold text-slate-700">{returnModalData.dueDate}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Ngày trả thực tế:</span>
+                  <span className="font-semibold text-indigo-600">{returnModalData.returnDate} (Hôm nay)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Thẻ tiền phạt */}
+            {returnModalData.daysOverdue > 0 ? (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>Đã quá hạn {returnModalData.daysOverdue} ngày</span>
+                  </div>
+                  <div className="text-[11px] text-rose-700 mt-0.5">
+                    Mức phạt: {formatVnd(returnModalData.feePerDay)} / ngày
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-rose-500 block">
+                    Tổng tiền phạt
+                  </span>
+                  <span className="text-2xl font-black text-rose-600">
+                    {formatVnd(returnModalData.totalFine)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="font-bold text-xs block">Sách được trả đúng hạn quy định!</span>
+                    <span className="text-[11px] text-emerald-700">Không có tiền phạt trễ hạn.</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-extrabold text-emerald-600">0 đ</span>
+                </div>
+              </div>
+            )}
+
+            {/* NẾU CÓ TIỀN PHẠT: CHỌN PHƯƠNG THỨC THANH TOÁN (TIỀN MẶT HOẶC NGÂN HÀNG VIETQR) */}
+            {returnModalData.totalFine > 0 && (
+              <div className="space-y-4">
+                {/* 2 Tabs chọn phương thức */}
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('CASH')}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                      paymentMethod === 'CASH'
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Banknote className="w-4 h-4" />
+                    <span>Tiền Mặt Tại Quầy</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('BANK')}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                      paymentMethod === 'BANK'
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4" />
+                    <span>Chuyển Khoản (VietQR)</span>
+                  </button>
+                </div>
+
+                {/* TAB 1: TIỀN MẶT VỚI GỢI Ý MỆNH GIÁ */}
+                {paymentMethod === 'CASH' ? (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 animate-fadeIn">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Coins className="w-4 h-4 text-amber-500" />
+                        Gợi ý các số tiền khách đưa:
+                      </span>
+                      <span className="text-slate-400 text-[11px]">Bấm số tiền để tính thối lại</span>
+                    </div>
+
+                    {/* Danh sách nút gợi ý số tiền */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {generateCashSuggestions(returnModalData.totalFine).map((amt) => {
+                        const isSelected = customerCash === amt;
+                        const isExact = amt === returnModalData.totalFine;
+                        const change = amt - returnModalData.totalFine;
+
+                        return (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setCustomerCash(amt)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                            }`}
+                          >
+                            <span>{formatVnd(amt)}</span>
+                            {isExact ? (
+                              <span className="text-[10px] opacity-80">(Vừa đủ)</span>
+                            ) : change > 0 ? (
+                              <span
+                                className={`text-[10px] font-normal ${
+                                  isSelected ? 'text-indigo-200' : 'text-emerald-600'
+                                }`}
+                              >
+                                (Thối {formatVnd(change)})
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Ô nhập số tiền khách đưa */}
+                    <div className="pt-2 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                          Số tiền khách đưa (VNĐ):
+                        </label>
+                        <input
+                          type="number"
+                          step="1000"
+                          min="0"
+                          value={customerCash}
+                          onChange={(e) => setCustomerCash(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-mono text-sm font-bold text-slate-900 outline-none focus:border-indigo-600"
+                        />
+                      </div>
+
+                      {/* Hiển thị tiền thối lại hoặc thiếu */}
+                      <div className="p-3 rounded-xl border text-xs">
+                        {customerCash >= returnModalData.totalFine ? (
+                          <div className="text-emerald-800">
+                            <span className="text-[11px] text-slate-500 block">Tiền thừa trả khách:</span>
+                            <span className="text-base font-extrabold text-emerald-600">
+                              {formatVnd(customerCash - returnModalData.totalFine)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-rose-700">
+                            <span className="text-[11px] text-slate-500 block">Chưa đủ, còn thiếu:</span>
+                            <span className="text-base font-bold text-rose-600">
+                              {formatVnd(returnModalData.totalFine - customerCash)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* TAB 2: CHUYỂN KHOẢN NGÂN HÀNG VIETQR */
+                  <div className="p-4 rounded-2xl bg-gradient-to-b from-slate-50 to-indigo-50/20 border border-slate-200/80 space-y-4 animate-fadeIn">
+                    {returnModalData.settings.bank_account_no ? (
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
+                        {/* Hình ảnh mã VietQR */}
+                        <div className="p-2.5 bg-white rounded-2xl shadow-md border border-slate-200 shrink-0">
+                          <img
+                            src={getVietQrUrl({
+                              bankBinOrCode:
+                                returnModalData.settings.bank_bin ||
+                                returnModalData.settings.bank_code ||
+                                '970422',
+                              accountNo: returnModalData.settings.bank_account_no,
+                              accountName: returnModalData.settings.bank_account_name,
+                              amount: returnModalData.totalFine,
+                              memo: `Phat ${returnModalData.bookId} ${returnModalData.readerId}`,
+                              template: 'compact2',
+                            })}
+                            alt="VietQR Chuyển Khoản"
+                            className="w-48 h-auto rounded-xl object-contain"
+                          />
+                        </div>
+
+                        {/* Chi tiết thông tin chuyển khoản */}
+                        <div className="flex-1 w-full space-y-2 text-xs">
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                            <span className="text-slate-400 text-[11px]">Ngân hàng:</span>
+                            <span className="font-bold text-slate-800">
+                              {returnModalData.settings.bank_name ||
+                                returnModalData.settings.bank_code ||
+                                'MBBank'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                            <span className="text-slate-400 text-[11px]">Số tài khoản:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-indigo-600 text-sm">
+                                {returnModalData.settings.bank_account_no}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopyText(
+                                    returnModalData.settings.bank_account_no || '',
+                                    'số tài khoản'
+                                  )
+                                }
+                                className="p-1 rounded hover:bg-slate-100 text-slate-500 cursor-pointer"
+                                title="Sao chép số tài khoản"
+                              >
+                                {copiedBankField === 'số tài khoản' ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {returnModalData.settings.bank_account_name && (
+                            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                              <span className="text-slate-400 text-[11px]">Chủ tài khoản:</span>
+                              <span className="font-bold text-slate-800 uppercase">
+                                {returnModalData.settings.bank_account_name}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                            <span className="text-slate-400 text-[11px]">Số tiền cần chuyển:</span>
+                            <span className="font-black text-rose-600 text-sm">
+                              {formatVnd(returnModalData.totalFine)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                            <span className="text-slate-400 text-[11px]">Nội dung:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-semibold text-slate-700">
+                                {`Phat ${returnModalData.bookId} ${returnModalData.readerId}`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopyText(
+                                    `Phat ${returnModalData.bookId} ${returnModalData.readerId}`,
+                                    'nội dung chuyển khoản'
+                                  )
+                                }
+                                className="p-1 rounded hover:bg-slate-100 text-slate-500 cursor-pointer"
+                                title="Sao chép nội dung"
+                              >
+                                {copiedBankField === 'nội dung chuyển khoản' ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <p className="text-[11px] text-emerald-700 font-medium pt-1">
+                            ✓ Mã QR đã được nhúng sẵn số tiền phạt và nội dung chuyển khoản tự động.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-slate-400 space-y-2">
+                        <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+                        <p className="font-semibold text-xs text-slate-700">
+                          Chưa cài đặt tài khoản ngân hàng nhận tiền
+                        </p>
+                        <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                          Vui lòng vào trang <strong>Cài đặt</strong> để chọn ngân hàng và số tài khoản nhận tiền phạt trước khi sử dụng tính năng VietQR.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Nút hành động Modal */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+              <div className="text-xs text-slate-400 hidden sm:block">
+                Nhấn <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border text-slate-700 font-mono font-bold text-[10px]">Enter</kbd> để xác nhận, <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border text-slate-700 font-mono font-bold text-[10px]">Esc</kbd> để hủy
+              </div>
+
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReturnModalData(null);
+                    setTimeout(() => inputRef.current?.focus(), 50);
+                  }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold text-xs cursor-pointer"
+                >
+                  Hủy bỏ (Esc)
+                </button>
+
+                {returnModalData.totalFine > 0 && (
+                  <button
+                    type="button"
+                    disabled={isProcessingReturn}
+                    onClick={() => handleConfirmReturn(true)}
+                    className="px-3.5 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                    title="Miễn tiền phạt cho độc giả này và hoàn tất thu hồi sách"
+                  >
+                    Miễn Phạt
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  disabled={isProcessingReturn}
+                  onClick={() => handleConfirmReturn(false)}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>
+                    {isProcessingReturn
+                      ? 'Đang xử lý...'
+                      : returnModalData.totalFine > 0
+                      ? `Xác Nhận Đã Thu ${formatVnd(returnModalData.totalFine)}`
+                      : 'Xác Nhận Thu Hồi Sách (Enter)'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>,

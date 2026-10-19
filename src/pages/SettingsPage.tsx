@@ -17,7 +17,11 @@ import {
   Upload,
   ShieldCheck,
   Lock,
-  Info
+  Info,
+  Landmark,
+  QrCode,
+  Copy,
+  Check
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { playSuccessBeep, playErrorBeep } from '../services/audio';
@@ -29,11 +33,13 @@ import {
 } from '../services/auth';
 import type { AppSettings, AuthUser } from '../types';
 import type { StorageConfig } from '../types/electron';
+import { VIETNAMESE_BANKS, getVietQrUrl, formatVnd } from '../constants/banks';
 
 export default function SettingsPage() {
   const { showToast } = useToast();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [storageConfig, setStorageConfig] = useState<StorageConfig | null>(null);
+  const [copiedAccount, setCopiedAccount] = useState(false);
   const [settings, setSettings] = useState<AppSettings>({
     sound_enabled: true,
     borrow_days: 14,
@@ -41,6 +47,12 @@ export default function SettingsPage() {
     auto_email_enabled: true,
     resend_api_key: '',
     resend_from_email: 'onboarding@resend.dev',
+    late_fee_per_day: 5000,
+    bank_bin: '970422',
+    bank_code: 'MB',
+    bank_name: 'MBBank (Ngân hàng Quân Đội)',
+    bank_account_no: '',
+    bank_account_name: '',
   });
 
   const [saving, setSaving] = useState(false);
@@ -162,6 +174,13 @@ export default function SettingsPage() {
       logoutDesktopUser();
       window.location.reload();
     }
+  };
+
+  const handleCopyAccount = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedAccount(true);
+    showToast('Đã sao chép số tài khoản vào bộ nhớ tạm!', 'success');
+    setTimeout(() => setCopiedAccount(false), 2000);
   };
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -525,6 +544,226 @@ export default function SettingsPage() {
               <p className="text-[11px] text-slate-400 mt-1">
                 💡 Nhập <strong>0</strong> hoặc để trống nếu cho phép mượn <strong>Vô hạn</strong>.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* KHỐI 4B: CÀI ĐẶT TIỀN PHẠT QUÁ HẠN & TÀI KHOẢN NGÂN HÀNG (VIETQR) */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                <Landmark className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Tiền Phạt Quá Hạn &amp; Ngân Hàng Nhận Tiền (VietQR)</h2>
+                <p className="text-xs text-slate-500">
+                  Tự động tính tiền phạt theo ngày khi trả sách quá hạn và tạo mã VietQR chuyển khoản nhanh
+                </p>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Chuẩn VietQR Quốc Gia</span>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+            {/* Cột 1: Cấu hình tiền phạt và thông tin ngân hàng */}
+            <div className="space-y-4">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Mức tiền phạt theo ngày trễ hạn
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={settings.late_fee_per_day}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        late_fee_per_day: Math.max(0, parseInt(e.target.value) || 0),
+                      })
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold outline-none focus:bg-white focus:border-indigo-600"
+                    required
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                    VNĐ / ngày
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  <span className="text-[11px] text-slate-400">Chọn nhanh:</span>
+                  {[2000, 5000, 10000, 20000].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setSettings({ ...settings, late_fee_per_day: preset })}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-colors cursor-pointer ${
+                        settings.late_fee_per_day === preset
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                      }`}
+                    >
+                      {formatVnd(preset)}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Hệ thống tự động tính: <em>Số ngày quá hạn × Tiền phạt/ngày</em> khi độc giả hoàn trả sách trễ hạn.
+                </p>
+              </div>
+
+              {/* Ngân hàng nhận thanh toán (Dropdown) */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Ngân hàng nhận thanh toán (Dropdown):
+                </label>
+                <select
+                  value={settings.bank_bin || settings.bank_code || '970422'}
+                  onChange={(e) => {
+                    const found = VIETNAMESE_BANKS.find(
+                      (b) => b.bin === e.target.value || b.code === e.target.value
+                    );
+                    if (found) {
+                      setSettings({
+                        ...settings,
+                        bank_bin: found.bin,
+                        bank_code: found.code,
+                        bank_name: found.name,
+                      });
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold outline-none focus:bg-white focus:border-indigo-600 cursor-pointer"
+                >
+                  {VIETNAMESE_BANKS.map((b) => (
+                    <option key={b.bin} value={b.bin}>
+                      [{b.shortName}] {b.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Hỗ trợ quét mã QR bằng tất cả app ngân hàng (MB, VCB, Techcombank, BIDV, VietinBank...).
+                </p>
+              </div>
+
+              {/* Số tài khoản */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Số tài khoản ngân hàng:
+                </label>
+                <input
+                  type="text"
+                  value={settings.bank_account_no || ''}
+                  onChange={(e) =>
+                    setSettings({ ...settings, bank_account_no: e.target.value.replace(/\s+/g, '') })
+                  }
+                  placeholder="VD: 0987654321..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-600"
+                />
+              </div>
+
+              {/* Tên chủ tài khoản */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Tên chủ tài khoản (Viết hoa không dấu):
+                </label>
+                <input
+                  type="text"
+                  value={settings.bank_account_name || ''}
+                  onChange={(e) =>
+                    setSettings({ ...settings, bank_account_name: e.target.value.toUpperCase() })
+                  }
+                  placeholder="VD: NGUYEN VAN A"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold uppercase text-slate-900 outline-none focus:bg-white focus:border-indigo-600"
+                />
+              </div>
+            </div>
+
+            {/* Cột 2: Thẻ xem trước mã QR VietQR mẫu */}
+            <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-b from-slate-50 to-emerald-50/20 border border-slate-200 text-center space-y-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                <QrCode className="w-4 h-4 text-emerald-600" />
+                <span>Xem Trước Mã VietQR Tự Động</span>
+              </div>
+
+              {settings.bank_account_no ? (
+                <div className="space-y-3 w-full flex flex-col items-center animate-fadeIn">
+                  <div className="p-2.5 bg-white rounded-2xl shadow-md border border-slate-200/80 max-w-[240px]">
+                    <img
+                      src={getVietQrUrl({
+                        bankBinOrCode: settings.bank_bin || settings.bank_code || '970422',
+                        accountNo: settings.bank_account_no,
+                        accountName: settings.bank_account_name,
+                        amount: settings.late_fee_per_day || 10000,
+                        memo: 'Thanh toan phat tra sach',
+                        template: 'compact2',
+                      })}
+                      alt="VietQR Preview"
+                      className="w-full h-auto rounded-xl object-contain"
+                    />
+                  </div>
+
+                  <div className="w-full max-w-[280px] bg-white p-3 rounded-xl border border-slate-200 text-left text-[11px] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Ngân hàng:</span>
+                      <span className="font-bold text-slate-800">
+                        {settings.bank_code || 'MBBank'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Số tài khoản:</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-mono font-bold text-indigo-600">
+                          {settings.bank_account_no}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyAccount(settings.bank_account_no || '')}
+                          className="p-1 rounded hover:bg-slate-100 text-slate-500 cursor-pointer"
+                          title="Sao chép số tài khoản"
+                        >
+                          {copiedAccount ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    {settings.bank_account_name && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Chủ tài khoản:</span>
+                        <span className="font-bold text-slate-800 uppercase">
+                          {settings.bank_account_name}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                      <span className="text-slate-400">Mẫu tiền quét thử:</span>
+                      <span className="font-bold text-emerald-600">
+                        {formatVnd(settings.late_fee_per_day || 10000)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    💡 Bạn có thể mở app ngân hàng quét thử ngay để kiểm tra tài khoản!
+                  </p>
+                </div>
+              ) : (
+                <div className="py-8 flex flex-col items-center gap-2 text-slate-400">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+                    <QrCode className="w-6 h-6" />
+                  </div>
+                  <p className="font-semibold text-xs text-slate-600">Chưa nhập số tài khoản</p>
+                  <p className="text-[11px] text-slate-400 max-w-xs">
+                    Vui lòng nhập số tài khoản ngân hàng ở bên cạnh để tạo mã VietQR tự động khi bạn đọc nộp tiền phạt trễ hạn.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

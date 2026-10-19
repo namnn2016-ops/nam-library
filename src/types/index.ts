@@ -36,6 +36,28 @@ export interface AppSettings {
   auto_email_enabled?: boolean; // Tự động gửi email khi gần quá hạn hoặc quá hạn
   resend_api_key?: string; // Khóa API tùy chỉnh (Lưu trong SQLite an toàn trên máy)
   resend_from_email?: string; // Địa chỉ email gửi (Mặc định onboarding@resend.dev)
+  late_fee_per_day: number; // Tiền phạt theo ngày trễ (VNĐ/ngày)
+  bank_bin?: string; // Mã BIN ngân hàng VietQR
+  bank_code?: string; // Mã viết tắt ngân hàng
+  bank_name?: string; // Tên đầy đủ ngân hàng
+  bank_account_no?: string; // Số tài khoản ngân hàng
+  bank_account_name?: string; // Tên chủ tài khoản ngân hàng
+}
+
+export interface PenaltyRecord {
+  id?: number | string;
+  borrow_id?: number | string;
+  reader_id: string;
+  reader_name?: string;
+  book_id: string;
+  book_title?: string;
+  days_overdue: number;
+  fee_per_day: number;
+  total_fee: number;
+  paid_amount: number;
+  payment_method: 'CASH' | 'BANK' | 'WAIVED';
+  paid_date: string;
+  notes?: string;
 }
 
 export interface EmailBookItem {
