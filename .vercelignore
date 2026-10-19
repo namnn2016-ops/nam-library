@@ -1,0 +1,11 @@
+# Ignored by Vercel deployment
+release
+*.exe
+*.blockmap
+*.7z
+public/downloads/
+dist
+image/
+.git
+.env
+.env*.local
