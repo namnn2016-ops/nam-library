@@ -1,6 +1,7 @@
 // Dịch vụ gửi email thông báo qua Resend API
 // Bảo mật: Thực hiện qua Electron IPC Main Process (Node.js) để tránh lộ API Key trên Web bundle
 import type { EmailBookItem } from '../types';
+import { formatVnd } from '../constants/banks';
 
 export type { EmailBookItem };
 
@@ -19,6 +20,7 @@ function normalizeBooks(
       title: b.title,
       dueDate: b.dueDate || fallbackDueDate || 'Chưa xác định',
       daysDiff: b.daysDiff,
+      fineAmount: b.fineAmount,
     };
   });
 }
@@ -114,7 +116,12 @@ export async function sendOverdueNotificationEmail(
   readerEmail: string,
   books: (string | EmailBookItem)[],
   fallbackDueDate?: string,
-  config?: { apiKey?: string; fromEmail?: string }
+  config?: {
+    apiKey?: string;
+    fromEmail?: string;
+    feePerDay?: number;
+    totalFine?: number;
+  }
 ): Promise<{ success: boolean; message: string }> {
   if (!readerEmail) {
     return {
@@ -131,6 +138,19 @@ export async function sendOverdueNotificationEmail(
     };
   }
 
+  const computedTotalFine =
+    typeof config?.totalFine === 'number'
+      ? config.totalFine
+      : items.reduce((sum, b) => {
+          const fine =
+            typeof b.fineAmount === 'number'
+              ? b.fineAmount
+              : typeof b.daysDiff === 'number' && b.daysDiff > 0 && typeof config?.feePerDay === 'number'
+              ? b.daysDiff * config.feePerDay
+              : 0;
+          return sum + fine;
+        }, 0);
+
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #fecdd3; border-radius: 14px; padding: 26px; background-color: #fff1f2;">
       <h2 style="color: #e11d48; margin-top: 0; font-size: 20px; display: flex; align-items: center; gap: 8px;">
@@ -142,22 +162,49 @@ export async function sendOverdueNotificationEmail(
       </p>
       <ul style="background: #ffffff; padding: 14px 18px; border-radius: 10px; border: 1px solid #fda4af; list-style: none; margin: 16px 0;">
         ${items
-          .map(
-            (b) => `
+          .map((b) => {
+            const itemFine =
+              typeof b.fineAmount === 'number'
+                ? b.fineAmount
+                : typeof b.daysDiff === 'number' && b.daysDiff > 0 && typeof config?.feePerDay === 'number'
+                ? b.daysDiff * config.feePerDay
+                : undefined;
+
+            return `
           <li style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed #fecdd3;">
             <div style="font-weight: bold; color: #0f172a; font-size: 14px;">📖 ${b.title}</div>
             <div style="font-size: 13px; color: #64748b; margin-top: 3px;">
               Hạn trả: <span style="color: #dc2626; font-weight: bold;">${b.dueDate}</span>
               ${
                 typeof b.daysDiff === 'number' && b.daysDiff > 0
-                  ? `<span style="color: #b91c1c; font-weight: 600; margin-left: 8px;">(Đã quá hạn ${b.daysDiff} ngày)</span>`
+                  ? `<span style="color: #b91c1c; font-weight: 600; margin-left: 8px;">(Đã quá hạn ${b.daysDiff} ngày${
+                      typeof itemFine === 'number' && itemFine > 0
+                        ? ` • Tiền phạt: <strong style="color: #dc2626;">${formatVnd(itemFine)}</strong>`
+                        : ''
+                    })</span>`
                   : ''
               }
             </div>
           </li>
-        `
-          )
+        `;
+          })
           .join('')}
+        ${
+          computedTotalFine > 0
+            ? `
+          <li style="padding-top: 10px; font-size: 14px; border-top: 2px solid #fda4af; margin-top: 4px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="font-weight: 600; color: #475569;">Tổng tiền phạt quá hạn:</td>
+                <td style="text-align: right; font-weight: bold; color: #dc2626; font-size: 15px;">${formatVnd(
+                  computedTotalFine
+                )}</td>
+              </tr>
+            </table>
+          </li>
+        `
+            : ''
+        }
       </ul>
       <p style="font-size: 13px; color: #475569;">
         Vui lòng nhanh chóng mang sách đến quầy thư viện để hoàn trả hoặc làm thủ tục gia hạn theo quy định.

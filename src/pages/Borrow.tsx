@@ -180,7 +180,7 @@ export default function Borrow() {
       const { book, readerName } = await dbService.returnBook(bookId, {
         daysOverdue,
         feePerDay,
-        totalFee,
+        totalFee: totalFine,
         paidAmount,
         paymentMethod: actualPaymentMethod,
         notes: isWaived

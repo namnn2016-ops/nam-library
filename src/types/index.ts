@@ -64,6 +64,7 @@ export interface EmailBookItem {
   title: string;
   dueDate: string;
   daysDiff?: number; // Quá hạn (nếu âm hoặc số dương biểu thị số ngày quá hạn) hoặc số ngày còn lại
+  fineAmount?: number; // Tiền phạt quá hạn tạm tính (VNĐ)
 }
 
 export interface OverdueReaderInfo {

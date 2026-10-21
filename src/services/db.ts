@@ -1081,16 +1081,19 @@ export const dbService = {
 
         const overdueBooks: EmailBookItem[] = [];
         const nearDueBooks: EmailBookItem[] = [];
+        const feePerDay = settings.late_fee_per_day ?? 5000;
 
         for (const b of readerBorrows) {
           const dueDateTime = new Date(b.due_date).getTime();
           const diffDays = Math.round((dueDateTime - todayTime) / (1000 * 3600 * 24));
 
           if (diffDays < 0) {
+            const daysOverdue = Math.abs(diffDays);
             overdueBooks.push({
               title: b.book_title || b.book_id,
               dueDate: b.due_date,
-              daysDiff: Math.abs(diffDays), // Số ngày quá hạn
+              daysDiff: daysOverdue, // Số ngày quá hạn
+              fineAmount: daysOverdue * feePerDay,
             });
           } else if (diffDays <= 2) {
             nearDueBooks.push({
@@ -1117,6 +1120,7 @@ export const dbService = {
             {
               apiKey: settings.resend_api_key || undefined,
               fromEmail: settings.resend_from_email || undefined,
+              feePerDay,
             }
           );
         } else if (nearDueBooks.length > 0) {

@@ -34,3 +34,4 @@ release
 *.blockmap
 public/downloads/*.exe
 public/downloads/*.zip
+.vercel

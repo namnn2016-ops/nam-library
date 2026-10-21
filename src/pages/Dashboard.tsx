@@ -72,14 +72,16 @@ export default function Dashboard() {
   const handleSendReminder = async (item: OverdueReaderInfo) => {
     setSendingEmail(item.reader.id);
 
-    // Chuyển danh sách sách quá hạn kèm chính xác ngày đến hạn của từng cuốn
+    const settings = await dbService.getSettings();
+    const feePerDay = settings.late_fee_per_day ?? 5000;
+
+    // Chuyển danh sách sách quá hạn kèm chính xác ngày đến hạn của từng cuốn và tiền phạt
     const books: EmailBookItem[] = item.overdue_books.map((b) => ({
       title: b.book_title || b.book_id,
       dueDate: b.due_date,
       daysDiff: b.days_overdue,
+      fineAmount: b.days_overdue * feePerDay,
     }));
-
-    const settings = await dbService.getSettings();
 
     const res = await sendOverdueNotificationEmail(
       item.reader.name,
@@ -89,6 +91,7 @@ export default function Dashboard() {
       {
         apiKey: settings.resend_api_key || undefined,
         fromEmail: settings.resend_from_email || undefined,
+        feePerDay,
       }
     );
 
